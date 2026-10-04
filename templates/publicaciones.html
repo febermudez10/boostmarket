@@ -1,1 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Publicaciones - BoostMarket</title>
+    <link rel="stylesheet" href="/static/app.css">
+</head>
 
+<body>
+
+<aside>
+    <div class="logo">
+        SOUTH DADE<br>TOYOTA
+        <small>MARKETPLACE MANAGER</small>
+    </div>
+
+    <nav>
+        <a href="/">Dashboard</a>
+        <a href="/">Inventario</a>
+        <a class="active" href="/publicaciones">Publicaciones</a>
+        <a>Leads</a>
+        <a>Actividad</a>
+        <a>Configuración</a>
+    </nav>
+
+    <div class="foot">
+        Inventario: South Dade Toyota<br>
+        Sincronización automática
+    </div>
+</aside>
+
+<main class="main">
+
+<header>
+    <div>
+        <h1>Publicaciones</h1>
+        <p>Vehículos preparados para Facebook Marketplace</p>
+    </div>
+
+    <a href="/">
+        <button>← Dashboard</button>
+    </a>
+</header>
+
+<section class="content">
+
+    <div class="cards">
+        <div>
+            <span>TOTAL VEHÍCULOS</span>
+            <b id="vehicles">0</b>
+        </div>
+
+        <div>
+            <span>PENDIENTES</span>
+            <b id="pending">0</b>
+        </div>
+
+        <div>
+            <span>PUBLICADOS</span>
+            <b id="published">0</b>
+        </div>
+
+        <div>
+            <span>ERRORES</span>
+            <b id="errors">0</b>
+        </div>
+    </div>
+
+    <section class="panel">
+
+        <div class="panelhead">
+            <h2>Cola de publicaciones</h2>
+
+            <div>
+                <input id="search"
+                       placeholder="Buscar vehículo o VIN">
+
+                <select id="filter">
+                    <option value="">Todos</option>
+                    <option value="pending">Pendientes</option>
+                    <option value="published">Publicados</option>
+                    <option value="error">Error</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="tablewrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Vehículo</th>
+                        <th>VIN</th>
+                        <th>Marketplace</th>
+                        <th>Estado</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+
+                <tbody id="rows"></tbody>
+            </table>
+        </div>
+
+    </section>
+
+</section>
+</main>
+
+<script>
+
+let data=[];
+
+const $=id=>document.getElementById(id);
+
+const money=x=>x==null
+    ? "—"
+    : new Intl.NumberFormat(
+        "en-US",
+        {
+            style:"currency",
+            currency:"USD",
+            maximumFractionDigits:0
+        }
+    ).format(x);
+
+function esc(s){
+    return String(s ?? "")
+        .replace(/[&<>"']/g,c=>({
+            "&":"&amp;",
+            "<":"&lt;",
+            ">":"&gt;",
+            '"':"&quot;",
+            "'":"&#39;"
+        }[c]));
+}
+
+function render(){
+
+    const q=$("search").value.toLowerCase();
+    const filter=$("filter").value;
+
+    const list=data.filter(v=>{
+
+        const matchesStatus=!filter || v.status===filter;
+
+        const text=`${v.vehicle} ${v.vin}`.toLowerCase();
+
+        return matchesStatus && text.includes(q);
+    });
+
+    $("rows").innerHTML=list.map(v=>`
+
+        <tr>
+
+            <td>
+                <b>${esc(v.vehicle)}</b>
+                <small>${v.mileage ? esc(v.mileage.toLocaleString())+" mi" : ""}</small>
+            </td>
+
+            <td>${esc(v.vin)}</td>
+
+            <td>
+                <b>${money(v.marketplace_price)}</b>
+            </td>
+
+            <td>
+                <span class="badge ${esc(v.status)}">
+                    ${esc(v.status)}
+                </span>
+            </td>
+
+            <td>
+                <button onclick="prepareVehicle('${esc(v.vin)}')">
+                    Preparar publicación
+                </button>
+            </td>
+
+        </tr>
+
+    `).join("");
+}
+
+async function load(){
+
+    const [summary,inventory]=await Promise.all([
+        fetch("/api/summary").then(r=>r.json()),
+        fetch("/api/inventory").then(r=>r.json())
+    ]);
+
+    data=inventory;
+
+    $("vehicles").textContent=summary.vehicles || 0;
+    $("pending").textContent=summary.pending || 0;
+    $("published").textContent=summary.published || 0;
+    $("errors").textContent=summary.errors || 0;
+
+    render();
+}
+
+function prepareVehicle(vin){
+
+    const vehicle=data.find(v=>v.vin===vin);
+
+    if(!vehicle) return;
+
+    alert(
+        "Preparar publicación\n\n"+
+        vehicle.vehicle+"\n"+
+        "VIN: "+vehicle.vin+"\n"+
+        "Precio Marketplace: "+money(vehicle.marketplace_price)
+    );
+}
+
+$("search").oninput=render;
+$("filter").onchange=render;
+
+load();
+
+</script>
+
+</body>
+</html>
