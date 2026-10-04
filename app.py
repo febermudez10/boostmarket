@@ -1,3 +1,4 @@
+from fastapi.staticfiles import StaticFiles
 import re, sqlite3, requests
 from datetime import datetime, timezone
 from urllib.parse import urljoin
@@ -13,6 +14,7 @@ TIMEOUT=30
 HEADERS={"User-Agent":"South-Dade-Toyota-Inventory-Manager/1.0"}
 SOURCE="https://www.southdadetoyota.com/llm/inventory/?type=used"
 app=FastAPI(title="South Dade Toyota Marketplace Manager")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 templates=Jinja2Templates(directory="templates")
 
 def db():
