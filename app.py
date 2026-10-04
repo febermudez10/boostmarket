@@ -132,3 +132,88 @@ def sync():
         return {"ok":True,"count":count}
     except Exception as e:
         return JSONResponse({"ok":False,"error":str(e)},status_code=502)
+        @app.post("/api/import-vincue")
+async def import_vincue(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        wb = load_workbook(BytesIO(contents), data_only=True)
+        ws = wb.active
+
+        headers = [str(cell.value).strip() if cell.value is not None else "" for cell in ws[1]]
+        columns = {name: i for i, name in enumerate(headers)}
+
+        required = ["VIN", "Year", "Model", "StockNo", "Odo", "Price"]
+        missing = [name for name in required if name not in columns]
+
+        if missing:
+            return JSONResponse(
+                {"ok": False, "error": "Faltan columnas: " + ", ".join(missing)},
+                status_code=400
+            )
+
+        c = db()
+        imported = 0
+        now = datetime.now(timezone.utc).isoformat()
+
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            vin = str(row[columns["VIN"]] or "").strip()
+
+            if not vin:
+                continue
+
+            year = str(row[columns["Year"]] or "").strip()
+            model = str(row[columns["Model"]] or "").strip()
+            stock = str(row[columns["StockNo"]] or "").strip()
+
+            odo = row[columns["Odo"]]
+            price = row[columns["Price"]]
+
+            try:
+                price = float(price or 0)
+            except (TypeError, ValueError):
+                price = 0
+
+            marketplace_price = price + 1000 if price > 0 else 0
+            vehicle = f"{year} {model}".strip()
+
+            c.execute("""
+                INSERT INTO vehicles
+                (vin, vehicle, condition, mileage, your_price,
+                 marketplace_price, url, photo, status,
+                 lead_count, last_seen, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(vin) DO UPDATE SET
+                    vehicle=excluded.vehicle,
+                    condition=excluded.condition,
+                    mileage=excluded.mileage,
+                    your_price=excluded.your_price,
+                    marketplace_price=excluded.marketplace_price,
+                    last_seen=excluded.last_seen,
+                    updated_at=excluded.updated_at
+            """, (
+                vin,
+                vehicle,
+                "Used",
+                str(odo or ""),
+                price,
+                marketplace_price,
+                "",
+                "",
+                "pending",
+                0,
+                now,
+                now
+            ))
+
+            imported += 1
+
+        c.commit()
+        c.close()
+
+        return {"ok": True, "count": imported}
+
+    except Exception as e:
+        return JSONResponse(
+            {"ok": False, "error": str(e)},
+            status_code=500
+        )
