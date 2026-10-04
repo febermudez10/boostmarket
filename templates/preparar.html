@@ -1,1 +1,416 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preparar publicación - BoostMarket</title>
+<link rel="stylesheet" href="/static/app.css">
 
+<style>
+.prepare-container{
+    max-width:1100px;
+    margin:0 auto;
+}
+
+.prepare-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+}
+
+.prepare-card{
+    background:#fff;
+    border:1px solid #e4e7ec;
+    border-radius:11px;
+    padding:22px;
+    margin-bottom:20px;
+}
+
+.prepare-card h2{
+    margin:0 0 18px;
+    font-size:18px;
+}
+
+.vehicle-title{
+    font-size:24px;
+    font-weight:800;
+    margin-bottom:5px;
+}
+
+.vehicle-vin{
+    color:#697586;
+    font-size:13px;
+    margin-bottom:22px;
+}
+
+.info-row{
+    display:flex;
+    justify-content:space-between;
+    padding:12px 0;
+    border-bottom:1px solid #edf0f3;
+}
+
+.info-row span{
+    color:#697586;
+}
+
+.info-row strong{
+    text-align:right;
+}
+
+.market-price{
+    font-size:24px;
+    font-weight:800;
+}
+
+.field{
+    margin-bottom:18px;
+}
+
+.field label{
+    display:block;
+    font-size:12px;
+    font-weight:700;
+    margin-bottom:7px;
+    color:#475467;
+}
+
+.field input,
+.field textarea{
+    width:100%;
+    padding:12px;
+    border:1px solid #d4d9e0;
+    border-radius:7px;
+    font-family:inherit;
+    font-size:14px;
+}
+
+.field textarea{
+    min-height:220px;
+    resize:vertical;
+}
+
+.action-row{
+    display:flex;
+    gap:10px;
+    margin-top:20px;
+}
+
+.secondary{
+    background:#fff;
+    color:#111827;
+    border:1px solid #d4d9e0;
+}
+
+.status{
+    padding:6px 10px;
+    border-radius:99px;
+    background:#fff4d7;
+    color:#8a5b00;
+    font-size:11px;
+    font-weight:700;
+}
+
+.loading{
+    padding:40px;
+    text-align:center;
+    color:#697586;
+}
+
+@media(max-width:800px){
+    .prepare-grid{
+        grid-template-columns:1fr;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<aside>
+    <div class="logo">
+        SOUTH DADE<br>TOYOTA
+        <small>MARKETPLACE MANAGER</small>
+    </div>
+
+    <nav>
+        <a href="/">Dashboard</a>
+        <a>Inventario</a>
+        <a href="/publicaciones" class="active">Publicaciones</a>
+        <a>Leads</a>
+        <a>Actividad</a>
+        <a>Configuración</a>
+    </nav>
+
+    <div class="foot">
+        Inventario: South Dade Toyota<br>
+        Sincronización automática
+    </div>
+</aside>
+
+<main class="main">
+
+<header>
+    <div>
+        <h1>Preparar publicación</h1>
+        <p>Facebook Marketplace</p>
+    </div>
+
+    <button onclick="window.location.href='/publicaciones'">
+        ← Publicaciones
+    </button>
+</header>
+
+<section class="content">
+
+<div class="prepare-container">
+
+<div id="loading" class="prepare-card loading">
+    Cargando vehículo...
+</div>
+
+<div id="vehicleContent" style="display:none">
+
+<div class="prepare-grid">
+
+<div>
+
+<div class="prepare-card">
+
+    <div class="vehicle-title" id="vehicleName"></div>
+    <div class="vehicle-vin" id="vehicleVin"></div>
+
+    <div class="info-row">
+        <span>Millaje</span>
+        <strong id="mileage">—</strong>
+    </div>
+
+    <div class="info-row">
+        <span>Your Price</span>
+        <strong id="yourPrice">—</strong>
+    </div>
+
+    <div class="info-row">
+        <span>Precio Marketplace</span>
+        <strong class="market-price" id="marketPrice">—</strong>
+    </div>
+
+    <div class="info-row">
+        <span>Estado</span>
+        <strong>
+            <span class="status" id="status">pending</span>
+        </strong>
+    </div>
+
+</div>
+
+<div class="prepare-card">
+
+<h2>Información del vehículo</h2>
+
+<div class="info-row">
+    <span>VIN</span>
+    <strong id="vinInfo">—</strong>
+</div>
+
+<div class="info-row">
+    <span>Condición</span>
+    <strong id="condition">Used</strong>
+</div>
+
+<div class="info-row">
+    <span>Stock</span>
+    <strong id="stock">—</strong>
+</div>
+
+</div>
+
+</div>
+
+<div>
+
+<div class="prepare-card">
+
+<h2>Publicación de Marketplace</h2>
+
+<div class="field">
+    <label>TÍTULO</label>
+    <input id="listingTitle">
+</div>
+
+<div class="field">
+    <label>PRECIO</label>
+    <input id="listingPrice">
+</div>
+
+<div class="field">
+    <label>DESCRIPCIÓN</label>
+    <textarea id="description"></textarea>
+</div>
+
+<div class="action-row">
+    <button onclick="generateDescription()">
+        Generar descripción
+    </button>
+
+    <button class="secondary" onclick="copyListing()">
+        Copiar publicación
+    </button>
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+</main>
+
+<script>
+
+const money = x =>
+    new Intl.NumberFormat(
+        "en-US",
+        {
+            style:"currency",
+            currency:"USD",
+            maximumFractionDigits:0
+        }
+    ).format(x || 0);
+
+const vin = decodeURIComponent(
+    window.location.pathname.split("/").pop()
+);
+
+let vehicle = null;
+
+async function loadVehicle(){
+
+    try{
+
+        const response = await fetch(
+            "/api/vehicle/" + encodeURIComponent(vin)
+        );
+
+        const result = await response.json();
+
+        if(!response.ok || !result.ok){
+            throw new Error(
+                result.error || "No se pudo cargar el vehículo"
+            );
+        }
+
+        vehicle = result.vehicle;
+
+        document.getElementById("vehicleName").textContent =
+            vehicle.vehicle || "Vehículo";
+
+        document.getElementById("vehicleVin").textContent =
+            "VIN: " + vehicle.vin;
+
+        document.getElementById("vinInfo").textContent =
+            vehicle.vin || "—";
+
+        document.getElementById("mileage").textContent =
+            vehicle.mileage
+                ? Number(vehicle.mileage).toLocaleString() + " mi"
+                : "—";
+
+        document.getElementById("yourPrice").textContent =
+            money(vehicle.your_price);
+
+        document.getElementById("marketPrice").textContent =
+            money(vehicle.marketplace_price);
+
+        document.getElementById("condition").textContent =
+            vehicle.condition || "Used";
+
+        document.getElementById("status").textContent =
+            vehicle.status || "pending";
+
+        document.getElementById("stock").textContent =
+            vehicle.stock || "—";
+
+        document.getElementById("listingTitle").value =
+            vehicle.vehicle || "";
+
+        document.getElementById("listingPrice").value =
+            vehicle.marketplace_price || "";
+
+        generateDescription();
+
+        document.getElementById("loading").style.display="none";
+        document.getElementById("vehicleContent").style.display="block";
+
+    }catch(error){
+
+        document.getElementById("loading").innerHTML =
+            "<strong>Error:</strong> " + error.message;
+
+    }
+
+}
+
+function generateDescription(){
+
+    if(!vehicle) return;
+
+    const name = vehicle.vehicle || "Used Vehicle";
+
+    const mileage = vehicle.mileage
+        ? Number(vehicle.mileage).toLocaleString()+" miles"
+        : "";
+
+    document.getElementById("description").value =
+`${name}
+
+${mileage ? "Mileage: "+mileage+"\n" : ""}VIN: ${vehicle.vin}
+
+Available now at South Dade Toyota.
+
+Financing options available.
+Trade-ins welcome.
+
+Contact us for availability and additional information.`;
+
+}
+
+async function copyListing(){
+
+    const title =
+        document.getElementById("listingTitle").value;
+
+    const price =
+        document.getElementById("listingPrice").value;
+
+    const description =
+        document.getElementById("description").value;
+
+    const text =
+`${title}
+
+Price: ${money(Number(price))}
+
+${description}`;
+
+    try{
+        await navigator.clipboard.writeText(text);
+        alert("Publicación copiada.");
+    }catch(e){
+        alert("No se pudo copiar la publicación.");
+    }
+
+}
+
+loadVehicle();
+
+</script>
+
+</body>
+</html>
