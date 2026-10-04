@@ -2,6 +2,8 @@ fastapi
 uvicorn[standard]
 requests
 beautifulsoup4
+lxml
 Jinja2>=3.1.0
-python-multipart
 openpyxl
+python-multipart
+psycopg[binary]>=3.2
