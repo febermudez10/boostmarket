@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>South Dade Toyota — Marketplace Manager</title><link rel="stylesheet" href="/static/app.css"></head>
+<body>
+<aside><div class="logo">SOUTH DADE TOYOTA<small>MARKETPLACE MANAGER</small></div>
+<nav><a class="active">Dashboard</a><a>Inventario</a><a>Publicaciones</a><a>Leads</a><a>Actividad</a><a>Configuración</a></nav>
+<div class="foot">Inventario: South Dade Toyota<br>Sincronización automática</div></aside>
+<main><header><div><h1>Dashboard</h1><p>Inventario usado y publicaciones de Marketplace</p></div><button id="sync">↻ Sincronizar inventario</button></header>
+<section class="content"><div class="cards">
+<div><span>VEHÍCULOS USADOS</span><b id="vehicles">0</b></div><div><span>DISPONIBLES</span><b id="available">0</b></div>
+<div><span>PUBLICADOS</span><b id="published">0</b></div><div><span>PENDIENTES</span><b id="pending">0</b></div><div><span>TOTAL LEADS</span><b id="total_leads">0</b></div></div>
+<section class="panel"><div class="panelhead"><h2>Inventario</h2><div><input id="search" placeholder="Buscar VIN, modelo, stock..."><select id="filter"><option value="">Todos</option><option>published</option><option>pending</option><option>error</option><option>unavailable</option></select></div></div>
+<div class="tablewrap"><table><thead><tr><th>Vehículo</th><th>VIN</th><th>Your Price</th><th>Marketplace</th><th>Estado</th><th>Leads</th><th>Web</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+<p class="note">El precio de Marketplace se calcula automáticamente como <b>Your Price + $1,000</b>. La publicación en Marketplace se conectará posteriormente mediante una integración autorizada.</p>
+</section></main>
+<script>
+let data=[];
+const $=id=>document.getElementById(id);
+const money=x=>x==null?"—":new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(x);
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function render(){
+ let q=$("search").value.toLowerCase(), f=$("filter").value;
+ let list=data.filter(v=>(!f||v.status===f)&&(`${v.vehicle} ${v.vin} ${v.mileage}`.toLowerCase().includes(q)));
+ $("rows").innerHTML=list.map(v=>`<tr><td><b>${esc(v.vehicle)}</b><small>${v.mileage?esc(v.mileage.toLocaleString())+" mi":""}</small></td><td><code>${esc(v.vin)}</code></td><td>${money(v.your_price)}</td><td><b>${money(v.marketplace_price)}</b></td><td><span class="badge ${esc(v.status)}">${esc(v.status)}</span></td><td><b>${v.lead_count||0}</b></td><td><a href="${esc(v.url)}" target="_blank">Ver ↗</a></td></tr>`).join("");
+}
+async function load(){
+ let [s,i]=await Promise.all([fetch("/api/summary").then(r=>r.json()),fetch("/api/inventory").then(r=>r.json())]);
+ data=i; for(const k in s) if($(k)) $(k).textContent=s[k]; render();
+}
+$("search").oninput=render;$("filter").onchange=render;
+$("sync").onclick=async()=>{ $("sync").disabled=true;$("sync").textContent="Sincronizando...";try{let r=await fetch("/api/sync",{method:"POST"});let x=await r.json();alert(x.ok?`Sincronizados ${x.count} vehículos.`:`Error: ${x.error}`);await load()}finally{$("sync").disabled=false;$("sync").textContent="↻ Sincronizar inventario"}};
+load(); setInterval(load,60000);
+</script></body></html>
