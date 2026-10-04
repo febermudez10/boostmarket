@@ -198,17 +198,7 @@ async function load(){
 }
 
 function prepareVehicle(vin){
-
-    const vehicle=data.find(v=>v.vin===vin);
-
-    if(!vehicle) return;
-
-    alert(
-        "Preparar publicación\n\n"+
-        vehicle.vehicle+"\n"+
-        "VIN: "+vehicle.vin+"\n"+
-        "Precio Marketplace: "+money(vehicle.marketplace_price)
-    );
+    window.location.href="/preparar/"+encodeURIComponent(vin);
 }
 
 $("search").oninput=render;
