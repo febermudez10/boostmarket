@@ -100,7 +100,7 @@ def startup(): init_db()
 
 @app.get("/",response_class=HTMLResponse)
 def home(request:Request):
-    return return templates.TemplateResponse(request=request, name="dashboard.html")
+    return templates.TemplateResponse(request=request, name="dashboard.html")
 
 @app.get("/api/inventory")
 def inventory():
