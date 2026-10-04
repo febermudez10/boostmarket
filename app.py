@@ -132,7 +132,7 @@ def sync():
         return {"ok":True,"count":count}
     except Exception as e:
         return JSONResponse({"ok":False,"error":str(e)},status_code=502)
-        @app.post("/api/import-vincue")
+@app.post("/api/import-vincue")
 async def import_vincue(file: UploadFile = File(...)):
     try:
         contents = await file.read()
