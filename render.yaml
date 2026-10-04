@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: boostmarket
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13
+      - key: DATABASE_PATH
+        value: /var/data/south_dade.db
+    disk:
+      name: boostmarket-data
+      mountPath: /var/data
+      sizeGB: 1
