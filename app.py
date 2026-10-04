@@ -241,3 +241,10 @@ def vehicle_detail(vin: str):
         )
 
     return {"ok": True, "vehicle": dict(row)}
+
+@app.get("/preparar/{vin}", response_class=HTMLResponse)
+def preparar_publicacion(request: Request, vin: str):
+    return templates.TemplateResponse(
+        request=request,
+        name="preparar.html"
+    )
