@@ -5,7 +5,7 @@
 <aside><div class="logo">SOUTH DADE TOYOTA<small>MARKETPLACE MANAGER</small></div>
 <nav><a class="active">Dashboard</a><a>Inventario</a><a>Publicaciones</a><a>Leads</a><a>Actividad</a><a>Configuración</a></nav>
 <div class="foot">Inventario: South Dade Toyota<br>Sincronización automática</div></aside>
-<main><header><div><h1>Dashboard</h1><p>Inventario usado y publicaciones de Marketplace</p></div><button id="sync">↻ Sincronizar inventario</button></header>
+<main><header><div><h1>Dashboard</h1><p>Inventario usado y publicaciones de Marketplace</p></div><button id="sync">↻ Sincronizar inventario</button><button id="vincue">⬆ Importar Vincue</button><input type="file" id="vincueFile" accept=".xlsx" style="display:none"></header>
 <section class="content"><div class="cards">
 <div><span>VEHÍCULOS USADOS</span><b id="vehicles">0</b></div><div><span>DISPONIBLES</span><b id="available">0</b></div>
 <div><span>PUBLICADOS</span><b id="published">0</b></div><div><span>PENDIENTES</span><b id="pending">0</b></div><div><span>TOTAL LEADS</span><b id="total_leads">0</b></div></div>
@@ -29,5 +29,33 @@ async function load(){
 }
 $("search").oninput=render;$("filter").onchange=render;
 $("sync").onclick=async()=>{ $("sync").disabled=true;$("sync").textContent="Sincronizando...";try{let r=await fetch("/api/sync",{method:"POST"});let x=await r.json();alert(x.ok?`Sincronizados ${x.count} vehículos.`:`Error: ${x.error}`);await load()}finally{$("sync").disabled=false;$("sync").textContent="↻ Sincronizar inventario"}};
+ $("vincue").onclick=()=>$("vincueFile").click();
+
+$("vincueFile").onchange=async()=>{
+  const file=$("vincueFile").files[0];
+  if(!file)return;
+
+  const form=new FormData();
+  form.append("file",file);
+
+  $("vincue").disabled=true;
+  $("vincue").textContent="Importando...";
+
+  try{
+    const r=await fetch("/api/import-vincue",{method:"POST",body:form});
+    const j=await r.json();
+
+    if(!r.ok || !j.ok) throw new Error(j.error || "Error al importar");
+
+    alert("Importación completada: "+j.count+" vehículos");
+    await load();
+  }catch(e){
+    alert("Error: "+e.message);
+  }finally{
+    $("vincue").disabled=false;
+    $("vincue").textContent="⬆ Importar Vincue";
+    $("vincueFile").value="";
+  }
+};
 load(); setInterval(load,60000);
 </script></body></html>
