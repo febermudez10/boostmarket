@@ -224,3 +224,20 @@ def publicaciones(request: Request):
         request=request,
         name="publicaciones.html"
     )
+
+@app.get("/api/vehicle/{vin}")
+def vehicle_detail(vin: str):
+    c = db()
+    row = c.execute(
+        "SELECT * FROM vehicles WHERE vin = ?",
+        (vin,)
+    ).fetchone()
+    c.close()
+
+    if not row:
+        return JSONResponse(
+            {"ok": False, "error": "Vehículo no encontrado"},
+            status_code=404
+        )
+
+    return {"ok": True, "vehicle": dict(row)}
