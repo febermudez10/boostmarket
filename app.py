@@ -7,7 +7,8 @@ from fastapi.templating import Jinja2Templates
 from bs4 import BeautifulSoup
 
 DB=__import__("os").environ.get("DATABASE_PATH", "data/south_dade.db")
-SOURCE="https://www.southdadetoyota.com/llm/inventory/?type=used"
+import os
+os.makedirs(os.path.dirname(DB), exist_ok=True)
 TIMEOUT=30
 HEADERS={"User-Agent":"South-Dade-Toyota-Inventory-Manager/1.0"}
 
