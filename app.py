@@ -11,7 +11,7 @@ import os
 os.makedirs(os.path.dirname(DB), exist_ok=True)
 TIMEOUT=30
 HEADERS={"User-Agent":"South-Dade-Toyota-Inventory-Manager/1.0"}
-
+SOURCE="https://www.southdadetoyota.com/llm/inventory/?type=used"
 app=FastAPI(title="South Dade Toyota Marketplace Manager")
 templates=Jinja2Templates(directory="templates")
 
