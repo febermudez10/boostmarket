@@ -217,3 +217,10 @@ async def import_vincue(file: UploadFile = File(...)):
             {"ok": False, "error": str(e)},
             status_code=500
         )
+
+@app.get("/publicaciones", response_class=HTMLResponse)
+def publicaciones(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="publicaciones.html"
+    )
