@@ -88,6 +88,31 @@ def init_db():
             cur.execute("ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS stock TEXT")
             cur.execute("ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS pic_count INTEGER DEFAULT 0")
 
+            # Migración de una sola vez:
+            # borra los totales que anteriormente se importaron desde VINCUE.
+            # Una vez aplicada, los futuros reinicios NO borrarán leads de Marketplace.
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS app_migrations (
+                    migration_key TEXT PRIMARY KEY,
+                    applied_at TEXT NOT NULL
+                )
+            """)
+            cur.execute("""
+                SELECT 1
+                FROM app_migrations
+                WHERE migration_key = %s
+            """, ("reset_vincue_leads_v1",))
+
+            if not cur.fetchone():
+                cur.execute("UPDATE vehicles SET lead_count = 0")
+                cur.execute("""
+                    INSERT INTO app_migrations (migration_key, applied_at)
+                    VALUES (%s, %s)
+                """, (
+                    "reset_vincue_leads_v1",
+                    datetime.now(timezone.utc).isoformat()
+                ))
+
         c.commit()
 
 
@@ -612,8 +637,8 @@ async def import_vincue(file: UploadFile = File(...)):
     """Importa el export completo de Used Inventory de VINCUE.
 
     VINCUE pasa a ser la fuente principal del inventario. El VIN es la llave.
-    Se importan stock, millaje, precio, cantidad de fotos y leads. Si algún
-    export futuro incluye una URL de foto, también se conserva automáticamente.
+    Se importan stock, millaje, precio y cantidad de fotos. Los leads de VINCUE
+    NO se importan: lead_count queda reservado exclusivamente para Marketplace.
     """
     try:
         contents = await file.read()
@@ -678,25 +703,19 @@ async def import_vincue(file: UploadFile = File(...)):
                         except (TypeError, ValueError):
                             pic_count = 0
 
-                    vincue_leads = None
-                    if "Lead-Total" in columns:
-                        try:
-                            vincue_leads = int(row[columns["Lead-Total"]] or 0)
-                        except (TypeError, ValueError):
-                            vincue_leads = 0
 
                     photo = ""
                     if photo_column:
                         photo = str(row[columns[photo_column]] or "").strip()
 
-                    # Mantener estado y leads existentes cuando corresponda.
+                    # Mantener estado y leads de Marketplace existentes.
                     cur.execute(
                         "SELECT status, lead_count FROM vehicles WHERE vin = %s",
                         (vin,),
                     )
                     old = cur.fetchone()
                     status = old["status"] if old and old["status"] != "unavailable" else "pending"
-                    leads = vincue_leads if vincue_leads is not None else (old["lead_count"] if old else 0)
+                    leads = old["lead_count"] if old else 0
 
                     cur.execute(
                         """
@@ -719,7 +738,6 @@ async def import_vincue(file: UploadFile = File(...)):
                             stock = EXCLUDED.stock,
                             pic_count = EXCLUDED.pic_count,
                             status = EXCLUDED.status,
-                            lead_count = EXCLUDED.lead_count,
                             photo = CASE
                                 WHEN EXCLUDED.photo IS NOT NULL AND EXCLUDED.photo <> ''
                                 THEN EXCLUDED.photo
