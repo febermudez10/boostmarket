@@ -3,7 +3,14 @@
 <title>South Dade Toyota — Marketplace Manager</title><link rel="stylesheet" href="/static/app.css"></head>
 <body>
 <aside><div class="logo">SOUTH DADE TOYOTA<small>MARKETPLACE MANAGER</small></div>
-<nav><a class="active">Dashboard</a><a>Inventario</a><a>Publicaciones</a><a>Leads</a><a>Actividad</a><a>Configuración</a></nav>
+<nav>
+    <a href="/" class="active">Dashboard</a>
+    <a href="/inventario">Inventario</a>
+    <a href="/publicaciones">Publicaciones</a>
+    <a href="/leads">Leads</a>
+    <a href="/actividad">Actividad</a>
+    <a href="/configuracion">Configuración</a>
+</nav>
 <div class="foot">Inventario: South Dade Toyota<br>Sincronización automática</div></aside>
 <main><header><div><h1>Dashboard</h1><p>Inventario usado y publicaciones de Marketplace</p></div><button id="sync">↻ Sincronizar inventario</button><button id="vincue">⬆ Importar Vincue</button><input type="file" id="vincueFile" accept=".xlsx" style="display:none"></header>
 <section class="content"><div class="cards">
