@@ -629,6 +629,47 @@ def sync():
 
 
 # ============================================================
+# FOTOS VINCUE
+# ============================================================
+
+def normalize_vincue_photo_url(value):
+    """Normaliza una URL publica de imagen de VINCUE y elimina miniaturas sz160x."""
+    if not value:
+        return ""
+
+    url = str(value).strip()
+    if not url.startswith(("http://", "https://")):
+        return ""
+
+    # VINCUE envuelve algunas imagenes grandes con /image/opt-sz160x/.
+    # Quitar solo esa transformacion conserva la URL publica de la foto grande.
+    url = url.replace(
+        "https://cdn-img.vincue.net/image/opt-sz160x/",
+        "https://cdn-img.vincue.net/image/",
+        1,
+    )
+    url = url.replace(
+        "http://cdn-img.vincue.net/image/opt-sz160x/",
+        "http://cdn-img.vincue.net/image/",
+        1,
+    )
+    return url
+
+
+def excel_cell_url(cell):
+    """Devuelve URL desde valor o hyperlink de una celda Excel."""
+    if cell is None:
+        return ""
+
+    if getattr(cell, "hyperlink", None) and cell.hyperlink.target:
+        candidate = normalize_vincue_photo_url(cell.hyperlink.target)
+        if candidate:
+            return candidate
+
+    return normalize_vincue_photo_url(cell.value)
+
+
+# ============================================================
 # IMPORTAR VINCUE
 # ============================================================
 
@@ -663,8 +704,11 @@ async def import_vincue(file: UploadFile = File(...)):
             (
                 name
                 for name in [
-                    "Photo", "PhotoURL", "PhotoUrl", "Image", "ImageURL",
-                    "ImageUrl", "PrimaryPhoto", "PrimaryImage", "Picture"
+                    "Photo", "PhotoURL", "PhotoUrl", "Photo URL",
+                    "Image", "ImageURL", "ImageUrl", "Image URL",
+                    "PrimaryPhoto", "Primary Photo", "PrimaryImage",
+                    "Primary Image", "Picture", "PictureURL", "Picture URL",
+                    "Thumbnail", "ThumbnailURL", "Thumbnail URL"
                 ]
                 if name in columns
             ),
@@ -677,7 +721,8 @@ async def import_vincue(file: UploadFile = File(...)):
 
         with db() as c:
             with c.cursor() as cur:
-                for row in ws.iter_rows(min_row=2, values_only=True):
+                for cells in ws.iter_rows(min_row=2, values_only=False):
+                    row = [cell.value for cell in cells]
                     vin = str(row[columns["VIN"]] or "").strip().upper()
                     if not vin:
                         continue
@@ -706,7 +751,7 @@ async def import_vincue(file: UploadFile = File(...)):
 
                     photo = ""
                     if photo_column:
-                        photo = str(row[columns[photo_column]] or "").strip()
+                        photo = excel_cell_url(cells[columns[photo_column]])
 
                     # Mantener estado y leads de Marketplace existentes.
                     cur.execute(
