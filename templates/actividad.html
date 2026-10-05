@@ -1,1 +1,337 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
+<title>Actividad - BoostMarket</title>
+
+<link rel="stylesheet" href="/static/app.css">
+
+<style>
+.activity-card{
+    background:white;
+    border:1px solid #e4e7ec;
+    border-radius:12px;
+    overflow:hidden;
+}
+
+.activity-header{
+    margin-bottom:20px;
+}
+
+.activity-header h2{
+    margin:0;
+}
+
+.activity-header p{
+    margin:5px 0 0;
+    color:#667085;
+}
+
+.activity-table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+.activity-table th{
+    text-align:left;
+    padding:13px 15px;
+    background:#f8fafc;
+    color:#667085;
+    font-size:12px;
+}
+
+.activity-table td{
+    padding:14px 15px;
+    border-top:1px solid #edf0f3;
+    font-size:13px;
+}
+
+.vehicle-name{
+    font-weight:700;
+}
+
+.vin{
+    color:#667085;
+    font-size:12px;
+}
+
+.status{
+    display:inline-block;
+    padding:5px 9px;
+    border-radius:99px;
+    background:#fff4d7;
+    color:#8a5b00;
+    font-size:11px;
+    font-weight:700;
+}
+
+.date{
+    color:#667085;
+    font-size:12px;
+}
+
+.loading{
+    padding:35px;
+    text-align:center;
+    color:#667085;
+}
+
+@media(max-width:900px){
+    .activity-card{
+        overflow-x:auto;
+    }
+
+    .activity-table{
+        min-width:800px;
+    }
+}
+</style>
+
+</head>
+
+<body>
+
+<aside>
+
+    <div class="logo">
+        SOUTH DADE<br>TOYOTA
+        <small>MARKETPLACE MANAGER</small>
+    </div>
+
+    <nav>
+        <a href="/">Dashboard</a>
+        <a href="/inventario">Inventario</a>
+        <a href="/publicaciones">Publicaciones</a>
+        <a href="/leads">Leads</a>
+        <a href="/actividad" class="active">Actividad</a>
+        <a href="/configuracion">Configuración</a>
+    </nav>
+
+    <div class="foot">
+        Inventario: South Dade Toyota<br>
+        BoostMarket
+    </div>
+
+</aside>
+
+
+<main class="main">
+
+<header>
+
+    <div>
+        <h1>Actividad</h1>
+        <p>Historial reciente de BoostMarket</p>
+    </div>
+
+    <button onclick="window.location.href='/'">
+        Dashboard
+    </button>
+
+</header>
+
+
+<section class="content">
+
+<div class="activity-header">
+
+    <h2>Actividad del inventario</h2>
+
+    <p>
+        Últimas actualizaciones registradas
+        en los vehículos.
+    </p>
+
+</div>
+
+
+<div class="activity-card">
+
+    <div id="loading" class="loading">
+        Cargando actividad...
+    </div>
+
+
+    <table
+        id="activityTable"
+        class="activity-table"
+        style="display:none"
+    >
+
+        <thead>
+
+            <tr>
+                <th>Vehículo</th>
+                <th>VIN</th>
+                <th>Estado</th>
+                <th>Marketplace</th>
+                <th>Leads</th>
+                <th>Última actualización</th>
+            </tr>
+
+        </thead>
+
+
+        <tbody id="activityBody"></tbody>
+
+    </table>
+
+</div>
+
+</section>
+
+</main>
+
+
+<script>
+
+function money(value){
+
+    if(
+        value === null ||
+        value === undefined ||
+        value === ""
+    ){
+        return "—";
+    }
+
+    return new Intl.NumberFormat(
+        "en-US",
+        {
+            style:"currency",
+            currency:"USD",
+            maximumFractionDigits:0
+        }
+    ).format(Number(value));
+}
+
+
+function formatDate(value){
+
+    if(!value){
+        return "—";
+    }
+
+    const date = new Date(value);
+
+    if(isNaN(date.getTime())){
+        return value;
+    }
+
+    return date.toLocaleString(
+        "en-US",
+        {
+            month:"short",
+            day:"numeric",
+            year:"numeric",
+            hour:"numeric",
+            minute:"2-digit"
+        }
+    );
+}
+
+
+async function loadActivity(){
+
+    try{
+
+        const response =
+            await fetch("/api/inventory");
+
+
+        if(!response.ok){
+
+            throw new Error(
+                "No se pudo cargar la actividad"
+            );
+
+        }
+
+
+        const vehicles =
+            await response.json();
+
+
+        const body =
+            document.getElementById(
+                "activityBody"
+            );
+
+
+        vehicles.forEach(vehicle => {
+
+            const row =
+                document.createElement("tr");
+
+
+            row.innerHTML = `
+
+                <td>
+                    <div class="vehicle-name">
+                        ${vehicle.vehicle || "Vehículo"}
+                    </div>
+                </td>
+
+                <td>
+                    <div class="vin">
+                        ${vehicle.vin || "—"}
+                    </div>
+                </td>
+
+                <td>
+                    <span class="status">
+                        ${vehicle.status || "pending"}
+                    </span>
+                </td>
+
+                <td>
+                    ${money(vehicle.marketplace_price)}
+                </td>
+
+                <td>
+                    ${vehicle.lead_count || 0}
+                </td>
+
+                <td class="date">
+                    ${formatDate(vehicle.updated_at)}
+                </td>
+
+            `;
+
+
+            body.appendChild(row);
+
+        });
+
+
+        document.getElementById(
+            "loading"
+        ).style.display = "none";
+
+
+        document.getElementById(
+            "activityTable"
+        ).style.display = "table";
+
+
+    }catch(error){
+
+        document.getElementById(
+            "loading"
+        ).innerHTML =
+            "<strong>Error:</strong> "
+            + error.message;
+
+    }
+
+}
+
+
+loadActivity();
+
+</script>
+
+</body>
+</html>
