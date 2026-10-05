@@ -110,6 +110,73 @@ def money(s):
 # WEBSITE INVENTORY COLLECTOR
 # ============================================================
 
+def get_primary_photo(detail_url):
+    if not detail_url or detail_url == SOURCE:
+        return ""
+
+    try:
+        response = requests.get(
+            detail_url,
+            headers=HEADERS,
+            timeout=TIMEOUT
+        )
+        response.raise_for_status()
+
+        page = BeautifulSoup(response.text, "lxml")
+
+        # 1. Open Graph / Twitter image: normalmente es la foto principal.
+        for attrs in (
+            {"property": "og:image"},
+            {"property": "og:image:secure_url"},
+            {"name": "twitter:image"},
+        ):
+            meta = page.find("meta", attrs=attrs)
+            if meta and meta.get("content"):
+                candidate = urljoin(response.url, meta["content"].strip())
+                if candidate.startswith(("http://", "https://")):
+                    return candidate
+
+        # 2. Algunos sitios declaran la imagen principal con image_src.
+        image_src = page.find("link", rel="image_src")
+        if image_src and image_src.get("href"):
+            candidate = urljoin(response.url, image_src["href"].strip())
+            if candidate.startswith(("http://", "https://")):
+                return candidate
+
+        # 3. Fallback: buscar una imagen grande de inventario/galería.
+        bad_words = (
+            "logo", "icon", "carfax", "pixel", "spinner",
+            "placeholder", "avatar", "badge", "toyota-logo"
+        )
+
+        for img in page.find_all("img"):
+            raw = (
+                img.get("data-src")
+                or img.get("data-lazy-src")
+                or img.get("data-original")
+                or img.get("src")
+                or ""
+            ).strip()
+
+            if not raw or raw.startswith("data:"):
+                continue
+
+            candidate = urljoin(response.url, raw)
+            low = candidate.lower()
+
+            if any(word in low for word in bad_words):
+                continue
+
+            if any(ext in low for ext in (".jpg", ".jpeg", ".png", ".webp")):
+                return candidate
+
+    except Exception:
+        # Una foto nunca debe hacer fallar toda la sincronización.
+        return ""
+
+    return ""
+
+
 def collect():
 
     r = requests.get(
@@ -219,6 +286,9 @@ def collect():
             else None
         )
 
+        detail_url = href or SOURCE
+        photo_url = get_primary_photo(detail_url)
+
         found[vin] = {
             "vin": vin,
             "vehicle": name,
@@ -234,8 +304,8 @@ def collect():
                 if price is not None
                 else None
             ),
-            "url": href or SOURCE,
-            "photo": ""
+            "url": detail_url,
+            "photo": photo_url
         }
 
 
@@ -252,7 +322,7 @@ def collect():
 
                 cur.execute(
                     """
-                    SELECT status, lead_count
+                    SELECT status, lead_count, photo
                     FROM vehicles
                     WHERE vin = %s
                     """,
@@ -272,6 +342,11 @@ def collect():
                     if old
                     else 0
                 )
+
+                # Si el website no devuelve una foto temporalmente,
+                # conservar la que ya estaba guardada en Supabase.
+                if not v["photo"] and old and old.get("photo"):
+                    v["photo"] = old["photo"]
 
 
                 cur.execute(
@@ -308,6 +383,7 @@ def collect():
                         your_price = EXCLUDED.your_price,
                         marketplace_price = EXCLUDED.marketplace_price,
                         url = EXCLUDED.url,
+                        photo = EXCLUDED.photo,
                         last_seen = EXCLUDED.last_seen,
                         updated_at = EXCLUDED.updated_at
                     """,
