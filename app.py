@@ -28,7 +28,7 @@ HEADERS = {
     "User-Agent": "South-Dade-Toyota-Inventory-Manager/1.0"
 }
 
-SOURCE = "https://www.southdadetoyota.com/used-vehicles/"
+SOURCE = "https://www.southdadetoyota.com/llm/inventory/?type=used"
 
 
 # ============================================================
