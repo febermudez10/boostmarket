@@ -795,3 +795,65 @@ def preparar_publicacion(
         request=request,
         name="preparar.html"
     )
+    # ============================================================
+# INVENTARIO
+# ============================================================
+
+@app.get(
+    "/inventario",
+    response_class=HTMLResponse
+)
+def inventario_page(request: Request):
+
+    return templates.TemplateResponse(
+        request=request,
+        name="inventario.html"
+    )
+
+
+# ============================================================
+# LEADS
+# ============================================================
+
+@app.get(
+    "/leads",
+    response_class=HTMLResponse
+)
+def leads_page(request: Request):
+
+    return templates.TemplateResponse(
+        request=request,
+        name="leads.html"
+    )
+
+
+# ============================================================
+# ACTIVIDAD
+# ============================================================
+
+@app.get(
+    "/actividad",
+    response_class=HTMLResponse
+)
+def actividad_page(request: Request):
+
+    return templates.TemplateResponse(
+        request=request,
+        name="actividad.html"
+    )
+
+
+# ============================================================
+# CONFIGURACION
+# ============================================================
+
+@app.get(
+    "/configuracion",
+    response_class=HTMLResponse
+)
+def configuracion_page(request: Request):
+
+    return templates.TemplateResponse(
+        request=request,
+        name="configuracion.html"
+    )
