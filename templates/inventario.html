@@ -1,1 +1,390 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
+<title>Inventario - BoostMarket</title>
+
+<link rel="stylesheet" href="/static/app.css">
+
+<style>
+.inventory-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:15px;
+    margin-bottom:20px;
+}
+
+.inventory-header h2{
+    margin:0;
+}
+
+.inventory-header p{
+    margin:5px 0 0;
+    color:#667085;
+}
+
+.search-box{
+    width:100%;
+    max-width:400px;
+    padding:11px 14px;
+    border:1px solid #d0d5dd;
+    border-radius:8px;
+    font-size:14px;
+}
+
+.inventory-card{
+    background:white;
+    border:1px solid #e4e7ec;
+    border-radius:12px;
+    overflow:hidden;
+}
+
+.inventory-table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+.inventory-table th{
+    text-align:left;
+    padding:13px 15px;
+    background:#f8fafc;
+    color:#667085;
+    font-size:12px;
+}
+
+.inventory-table td{
+    padding:14px 15px;
+    border-top:1px solid #edf0f3;
+    font-size:13px;
+}
+
+.vehicle-name{
+    font-weight:700;
+}
+
+.vin{
+    color:#667085;
+    font-size:12px;
+}
+
+.price{
+    font-weight:700;
+}
+
+.market-price{
+    font-weight:800;
+}
+
+.status{
+    display:inline-block;
+    padding:5px 9px;
+    border-radius:99px;
+    background:#fff4d7;
+    color:#8a5b00;
+    font-size:11px;
+    font-weight:700;
+}
+
+.prepare-btn{
+    display:inline-block;
+    padding:8px 11px;
+    border-radius:7px;
+    text-decoration:none;
+    background:#111827;
+    color:white;
+    font-size:12px;
+    font-weight:700;
+}
+
+.loading{
+    padding:35px;
+    text-align:center;
+    color:#667085;
+}
+
+@media(max-width:900px){
+    .inventory-card{
+        overflow-x:auto;
+    }
+
+    .inventory-table{
+        min-width:850px;
+    }
+
+    .inventory-header{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<aside>
+
+    <div class="logo">
+        SOUTH DADE<br>TOYOTA
+        <small>MARKETPLACE MANAGER</small>
+    </div>
+
+    <nav>
+        <a href="/">Dashboard</a>
+        <a href="/inventario" class="active">Inventario</a>
+        <a href="/publicaciones">Publicaciones</a>
+        <a href="/leads">Leads</a>
+        <a href="/actividad">Actividad</a>
+        <a href="/configuracion">Configuración</a>
+    </nav>
+
+    <div class="foot">
+        Inventario: South Dade Toyota<br>
+        BoostMarket
+    </div>
+
+</aside>
+
+<main class="main">
+
+<header>
+    <div>
+        <h1>Inventario</h1>
+        <p>Vehículos usados disponibles</p>
+    </div>
+
+    <button onclick="window.location.href='/'">
+        Dashboard
+    </button>
+</header>
+
+<section class="content">
+
+    <div class="inventory-header">
+
+        <div>
+            <h2 id="inventoryCount">Inventario</h2>
+            <p>Busca y prepara vehículos para Marketplace.</p>
+        </div>
+
+        <input
+            id="search"
+            class="search-box"
+            type="text"
+            placeholder="Buscar vehículo o VIN..."
+            oninput="filterInventory()"
+        >
+
+    </div>
+
+    <div class="inventory-card">
+
+        <div id="loading" class="loading">
+            Cargando inventario...
+        </div>
+
+        <table
+            id="inventoryTable"
+            class="inventory-table"
+            style="display:none"
+        >
+
+            <thead>
+                <tr>
+                    <th>Vehículo</th>
+                    <th>VIN</th>
+                    <th>Millaje</th>
+                    <th>Your Price</th>
+                    <th>Marketplace</th>
+                    <th>Estado</th>
+                    <th>Leads</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+
+            <tbody id="inventoryBody"></tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+</main>
+
+<script>
+
+let vehicles = [];
+
+
+function money(value){
+
+    if(
+        value === null ||
+        value === undefined ||
+        value === ""
+    ){
+        return "—";
+    }
+
+    return new Intl.NumberFormat(
+        "en-US",
+        {
+            style:"currency",
+            currency:"USD",
+            maximumFractionDigits:0
+        }
+    ).format(Number(value));
+}
+
+
+function mileage(value){
+
+    if(!value){
+        return "—";
+    }
+
+    return Number(value).toLocaleString() + " mi";
+}
+
+
+async function loadInventory(){
+
+    try{
+
+        const response = await fetch("/api/inventory");
+
+        if(!response.ok){
+            throw new Error("No se pudo cargar el inventario");
+        }
+
+        vehicles = await response.json();
+
+        renderInventory(vehicles);
+
+        document.getElementById("loading").style.display =
+            "none";
+
+        document.getElementById("inventoryTable").style.display =
+            "table";
+
+    }catch(error){
+
+        document.getElementById("loading").innerHTML =
+            "<strong>Error:</strong> " + error.message;
+
+    }
+
+}
+
+
+function renderInventory(list){
+
+    const body =
+        document.getElementById("inventoryBody");
+
+    body.innerHTML = "";
+
+    document.getElementById("inventoryCount").textContent =
+        "Inventario (" + list.length + ")";
+
+
+    list.forEach(vehicle => {
+
+        const row =
+            document.createElement("tr");
+
+
+        row.innerHTML = `
+            <td>
+                <div class="vehicle-name">
+                    ${vehicle.vehicle || "Vehículo"}
+                </div>
+            </td>
+
+            <td>
+                <div class="vin">
+                    ${vehicle.vin || "—"}
+                </div>
+            </td>
+
+            <td>
+                ${mileage(vehicle.mileage)}
+            </td>
+
+            <td class="price">
+                ${money(vehicle.your_price)}
+            </td>
+
+            <td class="market-price">
+                ${money(vehicle.marketplace_price)}
+            </td>
+
+            <td>
+                <span class="status">
+                    ${vehicle.status || "pending"}
+                </span>
+            </td>
+
+            <td>
+                ${vehicle.lead_count || 0}
+            </td>
+
+            <td>
+                <a
+                    class="prepare-btn"
+                    href="/preparar/${encodeURIComponent(vehicle.vin)}"
+                >
+                    Preparar
+                </a>
+            </td>
+        `;
+
+        body.appendChild(row);
+
+    });
+
+}
+
+
+function filterInventory(){
+
+    const search =
+        document.getElementById("search")
+        .value
+        .toLowerCase()
+        .trim();
+
+
+    const filtered =
+        vehicles.filter(vehicle => {
+
+            const name =
+                (vehicle.vehicle || "")
+                .toLowerCase();
+
+            const vin =
+                (vehicle.vin || "")
+                .toLowerCase();
+
+            return (
+                name.includes(search) ||
+                vin.includes(search)
+            );
+
+        });
+
+
+    renderInventory(filtered);
+
+}
+
+
+loadInventory();
+
+</script>
+
+</body>
+</html>
