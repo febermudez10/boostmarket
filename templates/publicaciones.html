@@ -5,6 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Publicaciones - BoostMarket</title>
     <link rel="stylesheet" href="/static/app.css">
+
+    <style>
+        .vehicle-cell{
+            display:flex;
+            align-items:center;
+            gap:12px;
+            min-width:280px;
+        }
+
+        .vehicle-photo{
+            width:110px;
+            height:75px;
+            object-fit:cover;
+            border-radius:8px;
+            border:1px solid #e4e7ec;
+            background:#f8fafc;
+        }
+
+        .vehicle-photo-placeholder{
+            width:110px;
+            height:75px;
+            border-radius:8px;
+            border:1px solid #e4e7ec;
+            background:#f8fafc;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            color:#98a2b3;
+            font-size:11px;
+            text-align:center;
+        }
+
+        .vehicle-info{
+            display:flex;
+            flex-direction:column;
+            gap:4px;
+        }
+
+        .vehicle-info small{
+            color:#667085;
+        }
+    </style>
 </head>
 
 <body>
@@ -17,11 +59,11 @@
 
     <nav>
         <a href="/">Dashboard</a>
-        <a href="/">Inventario</a>
+        <a href="/inventario">Inventario</a>
         <a class="active" href="/publicaciones">Publicaciones</a>
-        <a>Leads</a>
-        <a>Actividad</a>
-        <a>Configuración</a>
+        <a href="/leads">Leads</a>
+        <a href="/actividad">Actividad</a>
+        <a href="/configuracion">Configuración</a>
     </nav>
 
     <div class="foot">
@@ -73,8 +115,10 @@
             <h2>Cola de publicaciones</h2>
 
             <div>
-                <input id="search"
-                       placeholder="Buscar vehículo o VIN">
+                <input
+                    id="search"
+                    placeholder="Buscar vehículo o VIN"
+                >
 
                 <select id="filter">
                     <option value="">Todos</option>
@@ -108,11 +152,11 @@
 
 <script>
 
-let data=[];
+let data = [];
 
-const $=id=>document.getElementById(id);
+const $ = id => document.getElementById(id);
 
-const money=x=>x==null
+const money = x => x == null
     ? "—"
     : new Intl.NumberFormat(
         "en-US",
@@ -123,86 +167,219 @@ const money=x=>x==null
         }
     ).format(x);
 
+
 function esc(s){
+
     return String(s ?? "")
-        .replace(/[&<>"']/g,c=>({
+        .replace(/[&<>"']/g, c => ({
             "&":"&amp;",
             "<":"&lt;",
             ">":"&gt;",
             '"':"&quot;",
             "'":"&#39;"
         }[c]));
+
 }
+
+
+function vehiclePhoto(v){
+
+    if(v.photo){
+
+        return `
+            <img
+                class="vehicle-photo"
+                src="${esc(v.photo)}"
+                alt="${esc(v.vehicle)}"
+                loading="lazy"
+                onerror="
+                    this.style.display='none';
+                    this.nextElementSibling.style.display='flex';
+                "
+            >
+
+            <div
+                class="vehicle-photo-placeholder"
+                style="display:none"
+            >
+                Sin foto
+            </div>
+        `;
+
+    }
+
+    return `
+        <div class="vehicle-photo-placeholder">
+            Sin foto
+        </div>
+    `;
+
+}
+
 
 function render(){
 
-    const q=$("search").value.toLowerCase();
-    const filter=$("filter").value;
+    const q =
+        $("search").value.toLowerCase();
 
-    const list=data.filter(v=>{
+    const filter =
+        $("filter").value;
 
-        const matchesStatus=!filter || v.status===filter;
 
-        const text=`${v.vehicle} ${v.vin}`.toLowerCase();
+    const list =
+        data.filter(v => {
 
-        return matchesStatus && text.includes(q);
-    });
+            const matchesStatus =
+                !filter ||
+                v.status === filter;
 
-    $("rows").innerHTML=list.map(v=>`
+            const text =
+                `${v.vehicle} ${v.vin}`
+                .toLowerCase();
+
+            return (
+                matchesStatus &&
+                text.includes(q)
+            );
+
+        });
+
+
+    $("rows").innerHTML =
+        list.map(v => `
 
         <tr>
 
             <td>
-                <b>${esc(v.vehicle)}</b>
-                <small>${v.mileage ? esc(v.mileage.toLocaleString())+" mi" : ""}</small>
+
+                <div class="vehicle-cell">
+
+                    ${vehiclePhoto(v)}
+
+                    <div class="vehicle-info">
+
+                        <b>
+                            ${esc(v.vehicle)}
+                        </b>
+
+                        <small>
+                            ${
+                                v.mileage
+                                ? esc(
+                                    Number(v.mileage)
+                                    .toLocaleString()
+                                  ) + " mi"
+                                : ""
+                            }
+                        </small>
+
+                    </div>
+
+                </div>
+
             </td>
 
-            <td>${esc(v.vin)}</td>
 
             <td>
-                <b>${money(v.marketplace_price)}</b>
+                ${esc(v.vin)}
             </td>
 
+
             <td>
+                <b>
+                    ${money(v.marketplace_price)}
+                </b>
+            </td>
+
+
+            <td>
+
                 <span class="badge ${esc(v.status)}">
                     ${esc(v.status)}
                 </span>
+
             </td>
 
+
             <td>
-                <button onclick="prepareVehicle('${esc(v.vin)}')">
+
+                <button
+                    onclick="prepareVehicle('${esc(v.vin)}')"
+                >
                     Preparar publicación
                 </button>
+
             </td>
 
         </tr>
 
     `).join("");
+
 }
+
 
 async function load(){
 
-    const [summary,inventory]=await Promise.all([
-        fetch("/api/summary").then(r=>r.json()),
-        fetch("/api/inventory").then(r=>r.json())
-    ]);
+    try{
 
-    data=inventory;
+        const [summary, inventory] =
+            await Promise.all([
 
-    $("vehicles").textContent=summary.vehicles || 0;
-    $("pending").textContent=summary.pending || 0;
-    $("published").textContent=summary.published || 0;
-    $("errors").textContent=summary.errors || 0;
+                fetch("/api/summary")
+                    .then(r => r.json()),
 
-    render();
+                fetch("/api/inventory")
+                    .then(r => r.json())
+
+            ]);
+
+
+        data = inventory;
+
+
+        $("vehicles").textContent =
+            summary.vehicles || 0;
+
+        $("pending").textContent =
+            summary.pending || 0;
+
+        $("published").textContent =
+            summary.published || 0;
+
+        $("errors").textContent =
+            summary.errors || 0;
+
+
+        render();
+
+
+    }catch(error){
+
+        console.error(
+            "Error cargando publicaciones:",
+            error
+        );
+
+    }
+
 }
+
 
 function prepareVehicle(vin){
-    window.location.href="/preparar/"+encodeURIComponent(vin);
+
+    window.location.href =
+        "/preparar/" +
+        encodeURIComponent(vin);
+
 }
 
-$("search").oninput=render;
-$("filter").onchange=render;
+
+$("search").oninput =
+    render;
+
+$("filter").onchange =
+    render;
+
 
 load();
 
