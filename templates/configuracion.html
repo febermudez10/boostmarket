@@ -1,1 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
+<title>Configuración - BoostMarket</title>
+
+<link rel="stylesheet" href="/static/app.css">
+
+<style>
+.settings-container{
+    max-width:900px;
+}
+
+.settings-card{
+    background:white;
+    border:1px solid #e4e7ec;
+    border-radius:12px;
+    padding:22px;
+    margin-bottom:20px;
+}
+
+.settings-card h2{
+    margin:0 0 5px;
+    font-size:18px;
+}
+
+.settings-card p{
+    margin:0 0 20px;
+    color:#667085;
+    font-size:13px;
+}
+
+.setting-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:20px;
+    padding:15px 0;
+    border-top:1px solid #edf0f3;
+}
+
+.setting-row:first-of-type{
+    border-top:none;
+}
+
+.setting-info strong{
+    display:block;
+    margin-bottom:4px;
+}
+
+.setting-info span{
+    color:#667085;
+    font-size:12px;
+}
+
+.value{
+    font-weight:700;
+    text-align:right;
+}
+
+.connected{
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:99px;
+    background:#eaf8ef;
+    color:#157a3d;
+    font-size:11px;
+    font-weight:700;
+}
+
+.pending{
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:99px;
+    background:#fff4d7;
+    color:#8a5b00;
+    font-size:11px;
+    font-weight:700;
+}
+
+.sync-button{
+    padding:10px 15px;
+    border:0;
+    border-radius:8px;
+    background:#111827;
+    color:white;
+    font-weight:700;
+    cursor:pointer;
+}
+
+.sync-result{
+    margin-top:15px;
+    padding:12px;
+    border-radius:8px;
+    background:#f8fafc;
+    display:none;
+}
+
+@media(max-width:700px){
+    .setting-row{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    .value{
+        text-align:left;
+    }
+}
+</style>
+
+</head>
+
+<body>
+
+<aside>
+
+    <div class="logo">
+        SOUTH DADE<br>TOYOTA
+        <small>MARKETPLACE MANAGER</small>
+    </div>
+
+    <nav>
+        <a href="/">Dashboard</a>
+        <a href="/inventario">Inventario</a>
+        <a href="/publicaciones">Publicaciones</a>
+        <a href="/leads">Leads</a>
+        <a href="/actividad">Actividad</a>
+        <a href="/configuracion" class="active">Configuración</a>
+    </nav>
+
+    <div class="foot">
+        Inventario: South Dade Toyota<br>
+        BoostMarket
+    </div>
+
+</aside>
+
+
+<main class="main">
+
+<header>
+
+    <div>
+        <h1>Configuración</h1>
+        <p>Configuración general de BoostMarket</p>
+    </div>
+
+    <button onclick="window.location.href='/'">
+        Dashboard
+    </button>
+
+</header>
+
+
+<section class="content">
+
+<div class="settings-container">
+
+    <div class="settings-card">
+
+        <h2>Inventario</h2>
+
+        <p>
+            Fuente utilizada por BoostMarket para
+            mantener actualizado el inventario.
+        </p>
+
+        <div class="setting-row">
+
+            <div class="setting-info">
+                <strong>Fuente de inventario</strong>
+                <span>Vehículos usados</span>
+            </div>
+
+            <div class="value">
+                South Dade Toyota
+            </div>
+
+        </div>
+
+
+        <div class="setting-row">
+
+            <div class="setting-info">
+                <strong>Sincronización</strong>
+                <span>
+                    Actualizar inventario desde el website
+                </span>
+            </div>
+
+            <button
+                class="sync-button"
+                id="syncButton"
+                onclick="syncInventory()"
+            >
+                Sincronizar ahora
+            </button>
+
+        </div>
+
+        <div
+            id="syncResult"
+            class="sync-result"
+        ></div>
+
+    </div>
+
+
+    <div class="settings-card">
+
+        <h2>Precios de Marketplace</h2>
+
+        <p>
+            Regla utilizada para calcular automáticamente
+            el precio de publicación.
+        </p>
+
+        <div class="setting-row">
+
+            <div class="setting-info">
+                <strong>Regla de precio</strong>
+                <span>
+                    Aplicada a todos los vehículos usados
+                </span>
+            </div>
+
+            <div class="value">
+                Your Price + $1,000
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="settings-card">
+
+        <h2>Base de datos</h2>
+
+        <p>
+            Almacenamiento de inventario y datos
+            de BoostMarket.
+        </p>
+
+        <div class="setting-row">
+
+            <div class="setting-info">
+                <strong>Supabase PostgreSQL</strong>
+                <span>
+                    Base de datos de BoostMarket
+                </span>
+            </div>
+
+            <span class="connected">
+                CONECTADO
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <div class="settings-card">
+
+        <h2>Facebook Marketplace</h2>
+
+        <p>
+            Estado de la integración para publicación
+            y seguimiento de leads.
+        </p>
+
+        <div class="setting-row">
+
+            <div class="setting-info">
+                <strong>Publicación automática</strong>
+                <span>
+                    Integración con Facebook Marketplace
+                </span>
+            </div>
+
+            <span class="pending">
+                PENDIENTE
+            </span>
+
+        </div>
+
+
+        <div class="setting-row">
+
+            <div class="setting-info">
+                <strong>Leads automáticos</strong>
+                <span>
+                    Recepción de leads desde Marketplace
+                </span>
+            </div>
+
+            <span class="pending">
+                PENDIENTE
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <div class="settings-card">
+
+        <h2>BoostMarket</h2>
+
+        <div class="setting-row">
+
+            <div class="setting-info">
+                <strong>Aplicación</strong>
+                <span>
+                    Marketplace Inventory Manager
+                </span>
+            </div>
+
+            <div class="value">
+                BoostMarket
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+</section>
+
+</main>
+
+
+<script>
+
+async function syncInventory(){
+
+    const button =
+        document.getElementById("syncButton");
+
+    const result =
+        document.getElementById("syncResult");
+
+
+    button.disabled = true;
+
+    button.textContent =
+        "Sincronizando...";
+
+
+    result.style.display =
+        "block";
+
+    result.textContent =
+        "Actualizando inventario...";
+
+
+    try{
+
+        const response =
+            await fetch(
+                "/api/sync",
+                {
+                    method:"POST"
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if(!response.ok || !data.ok){
+
+            throw new Error(
+                data.error ||
+                "No se pudo sincronizar"
+            );
+
+        }
+
+
+        result.textContent =
+            "Inventario actualizado correctamente. "
+            + data.count
+            + " vehículos encontrados.";
+
+
+    }catch(error){
+
+        result.textContent =
+            "Error: " + error.message;
+
+    }finally{
+
+        button.disabled = false;
+
+        button.textContent =
+            "Sincronizar ahora";
+
+    }
+
+}
+
+</script>
+
+</body>
+</html>
