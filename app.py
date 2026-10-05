@@ -75,12 +75,18 @@ def init_db():
                     marketplace_price DOUBLE PRECISION,
                     url TEXT,
                     photo TEXT,
+                    stock TEXT,
+                    pic_count INTEGER DEFAULT 0,
                     status TEXT DEFAULT 'pending',
                     lead_count INTEGER DEFAULT 0,
                     last_seen TEXT,
                     updated_at TEXT
                 )
             """)
+
+            # Migraciones seguras para bases de datos existentes.
+            cur.execute("ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS stock TEXT")
+            cur.execute("ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS pic_count INTEGER DEFAULT 0")
 
         c.commit()
 
@@ -602,193 +608,120 @@ def sync():
 # ============================================================
 
 @app.post("/api/import-vincue")
-async def import_vincue(
-    file: UploadFile = File(...)
-):
+async def import_vincue(file: UploadFile = File(...)):
+    """Importa el export completo de Used Inventory de VINCUE.
 
+    VINCUE pasa a ser la fuente principal del inventario. El VIN es la llave.
+    Se importan stock, millaje, precio, cantidad de fotos y leads. Si algún
+    export futuro incluye una URL de foto, también se conserva automáticamente.
+    """
     try:
-
         contents = await file.read()
-
-        wb = load_workbook(
-            BytesIO(contents),
-            data_only=True
-        )
-
+        wb = load_workbook(BytesIO(contents), data_only=True)
         ws = wb.active
 
-
         headers = [
-            str(cell.value).strip()
-            if cell.value is not None
-            else ""
+            str(cell.value).strip() if cell.value is not None else ""
             for cell in ws[1]
         ]
+        columns = {name: i for i, name in enumerate(headers)}
 
-
-        columns = {
-            name: i
-            for i, name
-            in enumerate(headers)
-        }
-
-
-        # Vincue puede exportar la foto con distintos nombres.
-        # Si existe una de estas columnas, BoostMarket la guardará.
-        photo_column = next(
-            (name for name in [
-                "Photo", "PhotoURL", "PhotoUrl", "Image", "ImageURL",
-                "ImageUrl", "PrimaryPhoto", "PrimaryImage", "Picture"
-            ] if name in columns),
-            None
-        )
-
-
-        required = [
-            "VIN",
-            "Year",
-            "Model",
-            "StockNo",
-            "Odo",
-            "Price"
-        ]
-
-
-        missing = [
-            name
-            for name in required
-            if name not in columns
-        ]
-
-
+        required = ["VIN", "Year", "Model", "StockNo", "Odo", "Price"]
+        missing = [name for name in required if name not in columns]
         if missing:
-
             return JSONResponse(
-                {
-                    "ok": False,
-                    "error":
-                    "Faltan columnas: "
-                    + ", ".join(missing)
-                },
-                status_code=400
+                {"ok": False, "error": "Faltan columnas: " + ", ".join(missing)},
+                status_code=400,
             )
 
+        photo_column = next(
+            (
+                name
+                for name in [
+                    "Photo", "PhotoURL", "PhotoUrl", "Image", "ImageURL",
+                    "ImageUrl", "PrimaryPhoto", "PrimaryImage", "Picture"
+                ]
+                if name in columns
+            ),
+            None,
+        )
 
         imported = 0
-
-        now = datetime.now(
-            timezone.utc
-        ).isoformat()
-
+        imported_vins = []
+        now = datetime.now(timezone.utc).isoformat()
 
         with db() as c:
-
             with c.cursor() as cur:
-
-                for row in ws.iter_rows(
-                    min_row=2,
-                    values_only=True
-                ):
-
-                    vin = str(
-                        row[columns["VIN"]]
-                        or ""
-                    ).strip()
-
-
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    vin = str(row[columns["VIN"]] or "").strip().upper()
                     if not vin:
                         continue
 
+                    year = str(row[columns["Year"]] or "").strip()
+                    model = str(row[columns["Model"]] or "").strip()
+                    stock = str(row[columns["StockNo"]] or "").strip()
+                    odo = row[columns["Odo"]]
+                    raw_price = row[columns["Price"]]
 
-                    year = str(
-                        row[columns["Year"]]
-                        or ""
-                    ).strip()
+                    try:
+                        price = float(raw_price or 0)
+                    except (TypeError, ValueError):
+                        price = 0
 
+                    marketplace_price = price + 1000 if price > 0 else 0
+                    vehicle = f"{year} {model}".strip()
 
-                    model = str(
-                        row[columns["Model"]]
-                        or ""
-                    ).strip()
+                    pic_count = 0
+                    if "PicCount" in columns:
+                        try:
+                            pic_count = int(row[columns["PicCount"]] or 0)
+                        except (TypeError, ValueError):
+                            pic_count = 0
 
-
-                    odo = row[
-                        columns["Odo"]
-                    ]
-
-
-                    price = row[
-                        columns["Price"]
-                    ]
-
+                    vincue_leads = None
+                    if "Lead-Total" in columns:
+                        try:
+                            vincue_leads = int(row[columns["Lead-Total"]] or 0)
+                        except (TypeError, ValueError):
+                            vincue_leads = 0
 
                     photo = ""
                     if photo_column:
-                        photo = str(
-                            row[columns[photo_column]] or ""
-                        ).strip()
+                        photo = str(row[columns[photo_column]] or "").strip()
 
-
-                    try:
-                        price = float(
-                            price or 0
-                        )
-
-                    except (
-                        TypeError,
-                        ValueError
-                    ):
-                        price = 0
-
-
-                    marketplace_price = (
-                        price + 1000
-                        if price > 0
-                        else 0
+                    # Mantener estado y leads existentes cuando corresponda.
+                    cur.execute(
+                        "SELECT status, lead_count FROM vehicles WHERE vin = %s",
+                        (vin,),
                     )
-
-
-                    vehicle = (
-                        f"{year} {model}"
-                    ).strip()
-
+                    old = cur.fetchone()
+                    status = old["status"] if old and old["status"] != "unavailable" else "pending"
+                    leads = vincue_leads if vincue_leads is not None else (old["lead_count"] if old else 0)
 
                     cur.execute(
                         """
                         INSERT INTO vehicles
                         (
-                            vin,
-                            vehicle,
-                            condition,
-                            mileage,
-                            your_price,
-                            marketplace_price,
-                            url,
-                            photo,
-                            status,
-                            lead_count,
-                            last_seen,
-                            updated_at
+                            vin, vehicle, condition, mileage,
+                            your_price, marketplace_price, url, photo,
+                            stock, pic_count, status, lead_count,
+                            last_seen, updated_at
                         )
-
                         VALUES
-                        (
-                            %s,%s,%s,%s,%s,%s,
-                            %s,%s,%s,%s,%s,%s
-                        )
-
+                        (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         ON CONFLICT (vin)
-
                         DO UPDATE SET
-
                             vehicle = EXCLUDED.vehicle,
                             condition = EXCLUDED.condition,
                             mileage = EXCLUDED.mileage,
                             your_price = EXCLUDED.your_price,
                             marketplace_price = EXCLUDED.marketplace_price,
+                            stock = EXCLUDED.stock,
+                            pic_count = EXCLUDED.pic_count,
+                            status = EXCLUDED.status,
+                            lead_count = EXCLUDED.lead_count,
                             photo = CASE
-                                WHEN EXCLUDED.photo IS NOT NULL
-                                     AND EXCLUDED.photo <> ''
+                                WHEN EXCLUDED.photo IS NOT NULL AND EXCLUDED.photo <> ''
                                 THEN EXCLUDED.photo
                                 ELSE vehicles.photo
                             END,
@@ -796,42 +729,40 @@ async def import_vincue(
                             updated_at = EXCLUDED.updated_at
                         """,
                         (
-                            vin,
-                            vehicle,
-                            "Used",
-                            str(odo or ""),
-                            price,
-                            marketplace_price,
-                            "",
-                            photo,
-                            "pending",
-                            0,
-                            now,
-                            now
-                        )
+                            vin, vehicle, "Used", str(odo or ""),
+                            price, marketplace_price, "", photo,
+                            stock, pic_count, status, leads,
+                            now, now,
+                        ),
                     )
 
-
                     imported += 1
+                    imported_vins.append(vin)
 
+                # El export completo de VINCUE define qué unidades siguen activas.
+                if imported_vins:
+                    cur.execute(
+                        """
+                        UPDATE vehicles
+                        SET status = 'unavailable', updated_at = %s
+                        WHERE NOT (vin = ANY(%s))
+                        """,
+                        (now, imported_vins),
+                    )
 
             c.commit()
 
-
         return {
             "ok": True,
-            "count": imported
+            "count": imported,
+            "source": "VINCUE",
+            "message": f"{imported} vehículos importados desde VINCUE"
         }
 
-
     except Exception as e:
-
         return JSONResponse(
-            {
-                "ok": False,
-                "error": str(e)
-            },
-            status_code=500
+            {"ok": False, "error": str(e)},
+            status_code=500,
         )
 
 
