@@ -560,24 +560,40 @@ def summary():
 
 @app.post("/api/sync")
 def sync():
-
+    """
+    La sincronización directa con southdadetoyota.com está desactivada
+    porque el sitio rechaza las solicitudes provenientes de Render (403).
+    El inventario se mantiene en Supabase y Vincue pasa a ser la fuente
+    de actualización mediante /api/import-vincue.
+    """
     try:
-
-        count = collect()
+        with db() as c:
+            with c.cursor() as cur:
+                cur.execute("""
+                    SELECT COUNT(*) AS n
+                    FROM vehicles
+                    WHERE status != 'unavailable'
+                """)
+                count = cur.fetchone()["n"]
 
         return {
             "ok": True,
-            "count": count
+            "count": count,
+            "mode": "vincue",
+            "message": (
+                "La sincronización directa con el website está desactivada "
+                "por el bloqueo 403. Usa Importar Vincue para actualizar "
+                "el inventario. Los vehículos guardados en Supabase no se modificaron."
+            )
         }
 
     except Exception as e:
-
         return JSONResponse(
             {
                 "ok": False,
                 "error": str(e)
             },
-            status_code=502
+            status_code=500
         )
 
 
@@ -615,6 +631,17 @@ async def import_vincue(
             for i, name
             in enumerate(headers)
         }
+
+
+        # Vincue puede exportar la foto con distintos nombres.
+        # Si existe una de estas columnas, BoostMarket la guardará.
+        photo_column = next(
+            (name for name in [
+                "Photo", "PhotoURL", "PhotoUrl", "Image", "ImageURL",
+                "ImageUrl", "PrimaryPhoto", "PrimaryImage", "Picture"
+            ] if name in columns),
+            None
+        )
 
 
         required = [
@@ -695,6 +722,13 @@ async def import_vincue(
                     ]
 
 
+                    photo = ""
+                    if photo_column:
+                        photo = str(
+                            row[columns[photo_column]] or ""
+                        ).strip()
+
+
                     try:
                         price = float(
                             price or 0
@@ -752,6 +786,12 @@ async def import_vincue(
                             mileage = EXCLUDED.mileage,
                             your_price = EXCLUDED.your_price,
                             marketplace_price = EXCLUDED.marketplace_price,
+                            photo = CASE
+                                WHEN EXCLUDED.photo IS NOT NULL
+                                     AND EXCLUDED.photo <> ''
+                                THEN EXCLUDED.photo
+                                ELSE vehicles.photo
+                            END,
                             last_seen = EXCLUDED.last_seen,
                             updated_at = EXCLUDED.updated_at
                         """,
@@ -763,7 +803,7 @@ async def import_vincue(
                             price,
                             marketplace_price,
                             "",
-                            "",
+                            photo,
                             "pending",
                             0,
                             now,
