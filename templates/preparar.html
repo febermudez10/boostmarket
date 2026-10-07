@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <title>Preparar publicación - BoostMarket</title>
-
 <link rel="stylesheet" href="/static/app.css">
 
 <style>
@@ -119,13 +118,86 @@
     color:#697586;
 }
 
+/* GALERÍA */
+
+.gallery-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:14px;
+}
+
+.gallery-head h2{
+    margin:0;
+}
+
+.photo-count{
+    font-size:12px;
+    font-weight:700;
+    color:#475467;
+    background:#f2f4f7;
+    padding:6px 10px;
+    border-radius:99px;
+}
+
+.main-photo-wrap{
+    width:100%;
+    aspect-ratio:4/3;
+    background:#f2f4f7;
+    border:1px solid #e4e7ec;
+    border-radius:10px;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.main-photo{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    display:block;
+}
+
+.no-photo{
+    color:#697586;
+    font-size:14px;
+}
+
+.thumbnails{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:8px;
+    margin-top:10px;
+    max-height:240px;
+    overflow:auto;
+}
+
+.thumb{
+    width:100%;
+    aspect-ratio:4/3;
+    object-fit:cover;
+    border:2px solid transparent;
+    border-radius:7px;
+    cursor:pointer;
+    background:#f2f4f7;
+}
+
+.thumb.active{
+    border-color:#111827;
+}
+
 @media(max-width:800px){
     .prepare-grid{
         grid-template-columns:1fr;
     }
+
+    .thumbnails{
+        grid-template-columns:repeat(4,1fr);
+    }
 }
 </style>
-
 </head>
 
 <body>
@@ -139,11 +211,11 @@
 
     <nav>
         <a href="/">Dashboard</a>
-        <a>Inventario</a>
+        <a href="/inventario">Inventario</a>
         <a href="/publicaciones" class="active">Publicaciones</a>
-        <a>Leads</a>
-        <a>Actividad</a>
-        <a>Configuración</a>
+        <a href="/leads">Leads</a>
+        <a href="/actividad">Actividad</a>
+        <a href="/configuracion">Configuración</a>
     </nav>
 
     <div class="foot">
@@ -152,7 +224,6 @@
     </div>
 
 </aside>
-
 
 <main class="main">
 
@@ -169,7 +240,6 @@
 
 </header>
 
-
 <section class="content">
 
 <div class="prepare-container">
@@ -178,13 +248,9 @@
     Cargando vehículo...
 </div>
 
-
 <div id="vehicleContent" style="display:none">
 
 <div class="prepare-grid">
-
-
-<!-- VEHICLE INFORMATION -->
 
 <div>
 
@@ -217,7 +283,6 @@
 
 </div>
 
-
 <div class="prepare-card">
 
 <h2>Información del vehículo</h2>
@@ -239,10 +304,22 @@
 
 </div>
 
+<div class="prepare-card">
+
+    <div class="gallery-head">
+        <h2>Fotos del vehículo</h2>
+        <span class="photo-count" id="photoCount">0 fotos</span>
+    </div>
+
+    <div class="main-photo-wrap" id="mainPhotoWrap">
+        <span class="no-photo">Sin fotos disponibles</span>
+    </div>
+
+    <div class="thumbnails" id="thumbnails"></div>
+
 </div>
 
-
-<!-- MARKETPLACE LISTING -->
+</div>
 
 <div>
 
@@ -265,7 +342,6 @@
     <textarea id="description"></textarea>
 </div>
 
-
 <div class="action-row">
 
     <button onclick="generateDescription()">
@@ -283,15 +359,11 @@
 </div>
 
 </div>
-
 </div>
-
 </div>
 
 </section>
-
 </main>
-
 
 <script>
 
@@ -305,121 +377,206 @@ const money = x =>
         }
     ).format(x || 0);
 
-
 const vin = decodeURIComponent(
     window.location.pathname.split("/").pop()
 );
 
-
 let vehicle = null;
+let photos = [];
 
+function renderPhotos(){
+
+    const count =
+        document.getElementById("photoCount");
+
+    const mainWrap =
+        document.getElementById("mainPhotoWrap");
+
+    const thumbs =
+        document.getElementById("thumbnails");
+
+    count.textContent =
+        photos.length +
+        (photos.length === 1 ? " foto" : " fotos");
+
+    thumbs.innerHTML = "";
+
+    if(!photos.length){
+
+        mainWrap.innerHTML =
+            '<span class="no-photo">Sin fotos disponibles</span>';
+
+        return;
+    }
+
+    mainWrap.innerHTML = "";
+
+    const main =
+        document.createElement("img");
+
+    main.id = "mainPhoto";
+    main.className = "main-photo";
+    main.src = photos[0];
+    main.alt = vehicle?.vehicle || "Vehículo";
+
+    mainWrap.appendChild(main);
+
+    photos.forEach((url,index)=>{
+
+        const img =
+            document.createElement("img");
+
+        img.src = url;
+        img.alt = `Foto ${index + 1}`;
+        img.loading = "lazy";
+
+        img.className =
+            "thumb" +
+            (index === 0 ? " active" : "");
+
+        img.onclick = ()=>{
+
+            document.getElementById("mainPhoto").src =
+                url;
+
+            document
+                .querySelectorAll(".thumb")
+                .forEach(x =>
+                    x.classList.remove("active")
+                );
+
+            img.classList.add("active");
+        };
+
+        thumbs.appendChild(img);
+
+    });
+}
 
 async function loadVehicle(){
 
     try{
 
         const response = await fetch(
-            "/api/vehicle/" + encodeURIComponent(vin)
+            "/api/vehicle/" +
+            encodeURIComponent(vin)
         );
 
-        const result = await response.json();
-
+        const result =
+            await response.json();
 
         if(!response.ok || !result.ok){
 
             throw new Error(
-                result.error || "No se pudo cargar el vehículo"
+                result.error ||
+                "No se pudo cargar el vehículo"
             );
-
         }
-
 
         vehicle = result.vehicle;
 
+        photos =
+            Array.isArray(result.photos)
+                ? result.photos
+                : [];
 
-        document.getElementById("vehicleName").textContent =
+        document.getElementById(
+            "vehicleName"
+        ).textContent =
             vehicle.vehicle || "Vehículo";
 
-
-        document.getElementById("vehicleVin").textContent =
+        document.getElementById(
+            "vehicleVin"
+        ).textContent =
             "VIN: " + vehicle.vin;
 
-
-        document.getElementById("vinInfo").textContent =
+        document.getElementById(
+            "vinInfo"
+        ).textContent =
             vehicle.vin || "—";
 
-
-        document.getElementById("mileage").textContent =
+        document.getElementById(
+            "mileage"
+        ).textContent =
             vehicle.mileage
-                ? Number(vehicle.mileage).toLocaleString() + " mi"
+                ? Number(
+                    vehicle.mileage
+                  ).toLocaleString() + " mi"
                 : "—";
 
-
-        document.getElementById("yourPrice").textContent =
+        document.getElementById(
+            "yourPrice"
+        ).textContent =
             money(vehicle.your_price);
 
-
-        document.getElementById("marketPrice").textContent =
+        document.getElementById(
+            "marketPrice"
+        ).textContent =
             money(vehicle.marketplace_price);
 
-
-        document.getElementById("condition").textContent =
+        document.getElementById(
+            "condition"
+        ).textContent =
             vehicle.condition || "Used";
 
-
-        document.getElementById("status").textContent =
+        document.getElementById(
+            "status"
+        ).textContent =
             vehicle.status || "pending";
 
-
-        document.getElementById("stock").textContent =
+        document.getElementById(
+            "stock"
+        ).textContent =
             vehicle.stock || "—";
 
-
-        document.getElementById("listingTitle").value =
+        document.getElementById(
+            "listingTitle"
+        ).value =
             vehicle.vehicle || "";
 
-
-        document.getElementById("listingPrice").value =
+        document.getElementById(
+            "listingPrice"
+        ).value =
             vehicle.marketplace_price || "";
 
-
         generateDescription();
+        renderPhotos();
 
+        document.getElementById(
+            "loading"
+        ).style.display = "none";
 
-        document.getElementById("loading").style.display =
-            "none";
-
-
-        document.getElementById("vehicleContent").style.display =
-            "block";
-
+        document.getElementById(
+            "vehicleContent"
+        ).style.display = "block";
 
     }catch(error){
 
-        document.getElementById("loading").innerHTML =
-            "<strong>Error:</strong> " + error.message;
-
+        document.getElementById(
+            "loading"
+        ).innerHTML =
+            "<strong>Error:</strong> " +
+            error.message;
     }
-
 }
-
 
 function generateDescription(){
 
     if(!vehicle) return;
 
-
     const name =
         vehicle.vehicle || "Used Vehicle";
 
-
     const mileage =
         vehicle.mileage
-            ? Number(vehicle.mileage).toLocaleString() + " miles"
+            ? Number(
+                vehicle.mileage
+              ).toLocaleString() + " miles"
             : "";
 
-
-    document.getElementById("description").value =
+    document.getElementById(
+        "description"
+    ).value =
 `${name}
 
 ${mileage ? "Mileage: " + mileage + "\n" : ""}VIN: ${vehicle.vin}
@@ -431,20 +588,22 @@ Send me a message for more information, financing options, or to schedule a test
 
 }
 
-
 async function copyListing(){
 
     const title =
-        document.getElementById("listingTitle").value;
-
+        document.getElementById(
+            "listingTitle"
+        ).value;
 
     const price =
-        document.getElementById("listingPrice").value;
-
+        document.getElementById(
+            "listingPrice"
+        ).value;
 
     const description =
-        document.getElementById("description").value;
-
+        document.getElementById(
+            "description"
+        ).value;
 
     const text =
 `${title}
@@ -452,7 +611,6 @@ async function copyListing(){
 Price: ${money(Number(price))}
 
 ${description}`;
-
 
     try{
 
@@ -462,12 +620,12 @@ ${description}`;
 
     }catch(e){
 
-        alert("No se pudo copiar la publicación.");
+        alert(
+            "No se pudo copiar la publicación."
+        );
 
     }
-
 }
-
 
 loadVehicle();
 
