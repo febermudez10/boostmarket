@@ -1,25 +1,27 @@
 
-from fastapi.staticfiles import StaticFiles
 import os
 import re
 import requests
+
 from datetime import datetime, timezone
 from urllib.parse import urljoin
-
-from fastapi import FastAPI, Request, UploadFile, File
-from fastapi.responses import HTMLResponse, JSONResponse, Response
-from fastapi.templating import Jinja2Templates
-from bs4 import BeautifulSoup
-from openpyxl import load_workbook
 from io import BytesIO
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import psycopg
 from psycopg.rows import dict_row
 
+from bs4 import BeautifulSoup
+from openpyxl import load_workbook
+
+from fastapi import FastAPI, Request, UploadFile, File
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.templating import Jinja2Templates
+
 
 # ============================================================
-# CONFIGURACION
+# BOOSTMARKET - SOUTH DADE TOYOTA
 # ============================================================
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -33,12 +35,24 @@ HEADERS = {
 
 SOURCE = "https://www.southdadetoyota.com/llm/inventory/?type=used"
 
+DEALER_FEE = 899
+ELECTRONIC_FILING_FEE = 595
+MARKETPLACE_MARGIN = 1000
+
+TOTAL_MARKETPLACE_ADDITION = (
+    DEALER_FEE
+    + ELECTRONIC_FILING_FEE
+    + MARKETPLACE_MARGIN
+)
+
 
 # ============================================================
-# APP
+# FASTAPI
 # ============================================================
 
-app = FastAPI(title="BoostMarket - South Dade Toyota")
+app = FastAPI(
+    title="BoostMarket - South Dade Toyota"
+)
 
 app.mount(
     "/static",
@@ -46,7 +60,9 @@ app.mount(
     name="static"
 )
 
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(
+    directory="templates"
+)
 
 
 # ============================================================
@@ -68,6 +84,7 @@ def db():
 def init_db():
     with db() as c:
         with c.cursor() as cur:
+
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS vehicles (
                     vin TEXT PRIMARY KEY,
@@ -87,13 +104,16 @@ def init_db():
                 )
             """)
 
-            # Migraciones seguras para bases de datos existentes.
-            cur.execute(
-                "ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS stock TEXT"
-            )
-            cur.execute(
-                "ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS pic_count INTEGER DEFAULT 0"
-            )
+            cur.execute("""
+                ALTER TABLE vehicles
+                ADD COLUMN IF NOT EXISTS stock TEXT
+            """)
+
+            cur.execute("""
+                ALTER TABLE vehicles
+                ADD COLUMN IF NOT EXISTS pic_count
+                INTEGER DEFAULT 0
+            """)
 
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS vehicle_photos (
@@ -105,12 +125,12 @@ def init_db():
                 )
             """)
 
-            cur.execute(
-                "CREATE INDEX IF NOT EXISTS idx_vehicle_photos_vin ON vehicle_photos(vin)"
-            )
+            cur.execute("""
+                CREATE INDEX IF NOT EXISTS
+                idx_vehicle_photos_vin
+                ON vehicle_photos(vin)
+            """)
 
-            # Migración de una sola vez:
-            # No vuelve a borrar leads en futuros reinicios.
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS app_migrations (
                     migration_key TEXT PRIMARY KEY,
@@ -125,9 +145,10 @@ def init_db():
             """, ("reset_vincue_leads_v1",))
 
             if not cur.fetchone():
-                cur.execute(
-                    "UPDATE vehicles SET lead_count = 0"
-                )
+                cur.execute("""
+                    UPDATE vehicles
+                    SET lead_count = 0
+                """)
 
                 cur.execute("""
                     INSERT INTO app_migrations (
@@ -137,7 +158,9 @@ def init_db():
                     VALUES (%s, %s)
                 """, (
                     "reset_vincue_leads_v1",
-                    datetime.now(timezone.utc).isoformat()
+                    datetime.now(
+                        timezone.utc
+                    ).isoformat()
                 ))
 
         c.commit()
@@ -147,580 +170,38 @@ def init_db():
 # UTILIDADES
 # ============================================================
 
-def money(s):
-    if not s:
+def money(value):
+    if value is None:
         return None
 
-    m = re.search(
-        r'\$?\s*([\d,]+(?:\.\d{2})?)',
-        s
+    match = re.search(
+        r"\$?\s*([\d,]+(?:\.\d{2})?)",
+        str(value)
     )
 
-    if not m:
+    if not match:
         return None
 
-    return float(
-        m.group(1).replace(",", "")
-    )
-
-# ============================================================
-# WEBSITE INVENTORY COLLECTOR
-# ============================================================
-
-def get_primary_photo(detail_url):
-    if not detail_url or detail_url == SOURCE:
-        return ""
-
     try:
-        response = requests.get(
-            detail_url,
-            headers=HEADERS,
-            timeout=TIMEOUT
+        return float(
+            match.group(1).replace(",", "")
         )
-        response.raise_for_status()
+    except ValueError:
+        return None
 
-        page = BeautifulSoup(response.text, "lxml")
 
-        # 1. Open Graph / Twitter image.
-        for attrs in (
-            {"property": "og:image"},
-            {"property": "og:image:secure_url"},
-            {"name": "twitter:image"},
-        ):
-            meta = page.find("meta", attrs=attrs)
-
-            if meta and meta.get("content"):
-                candidate = urljoin(
-                    response.url,
-                    meta["content"].strip()
-                )
-
-                if candidate.startswith(("http://", "https://")):
-                    return candidate
-
-        # 2. Imagen principal declarada en la página.
-        image_src = page.find("link", rel="image_src")
-
-        if image_src and image_src.get("href"):
-            candidate = urljoin(
-                response.url,
-                image_src["href"].strip()
-            )
-
-            if candidate.startswith(("http://", "https://")):
-                return candidate
-
-        # 3. Buscar imagen de inventario.
-        bad_words = (
-            "logo", "icon", "carfax", "pixel",
-            "spinner", "placeholder", "avatar",
-            "badge", "toyota-logo"
-        )
-
-        for img in page.find_all("img"):
-            raw = (
-                img.get("data-src")
-                or img.get("data-lazy-src")
-                or img.get("data-original")
-                or img.get("src")
-                or ""
-            ).strip()
-
-            if not raw or raw.startswith("data:"):
-                continue
-
-            candidate = urljoin(response.url, raw)
-            low = candidate.lower()
-
-            if any(word in low for word in bad_words):
-                continue
-
-            if any(
-                ext in low
-                for ext in (".jpg", ".jpeg", ".png", ".webp")
-            ):
-                return candidate
-
-    except Exception:
-        return ""
-
-    return ""
-
-
-def collect():
-    r = requests.get(
-        SOURCE,
-        headers=HEADERS,
-        timeout=TIMEOUT
-    )
-
-    r.raise_for_status()
-
-    soup = BeautifulSoup(
-        r.text,
-        "lxml"
-    )
-
-    found = {}
-
-    for block in soup.find_all(["article", "li", "div"]):
-        txt = " ".join(block.stripped_strings)
-
-        vm = re.search(
-            r'VIN:\s*([A-HJ-NPR-Z0-9]{17})',
-            txt,
-            re.I
-        )
-
-        if not vm:
-            continue
-
-        vin = vm.group(1).upper()
-
-        if vin in found:
-            continue
-
-        pm = re.search(
-            r'\$[\d,]+(?:\.\d{2})?',
-            txt
-        )
-
-        mm = re.search(
-            r'([\d,]+)\s*miles',
-            txt,
-            re.I
-        )
-
-        name = None
-
-        for tag in block.find_all(
-            ["h2", "h3", "h4", "a"]
-        ):
-            t = " ".join(tag.stripped_strings)
-
-            if (
-                re.search(r'\b20\d{2}\b', t)
-                and len(t) < 160
-            ):
-                name = t
-                break
-
-        if not name:
-            nm = re.search(
-                r'\b20\d{2}\s+[A-Za-z0-9\- ]+'
-                r'(?:LE|SE|XLE|SR5|EX|LX|Limited|Sport|Premium|Hybrid)?\b',
-                txt
-            )
-
-            name = (
-                nm.group(0).strip()
-                if nm
-                else "Used vehicle"
-            )
-
-        href = None
-
-        for a in block.find_all("a", href=True):
-            h = urljoin(
-                r.url,
-                a["href"]
-            )
-
-            if (
-                "southdadetoyota.com" in h
-                and (
-                    "inventory" in h
-                    or "/used-" in h
-                )
-            ):
-                href = h
-                break
-
-        price = (
-            money(pm.group(0))
-            if pm
-            else None
-        )
-
-        detail_url = href or SOURCE
-        photo_url = get_primary_photo(detail_url)
-
-        found[vin] = {
-            "vin": vin,
-            "vehicle": name,
-            "condition": "Used",
-            "mileage": (
-                mm.group(1).replace(",", "")
-                if mm
-                else ""
-            ),
-            "your_price": price,
-            "marketplace_price": (
-                price + 1000
-                if price is not None
-                else None
-            ),
-            "url": detail_url,
-            "photo": photo_url
-        }
-
-    now = datetime.now(timezone.utc).isoformat()
-
-    with db() as c:
-        with c.cursor() as cur:
-            for v in found.values():
-                cur.execute(
-                    """
-                    SELECT status, lead_count, photo
-                    FROM vehicles
-                    WHERE vin = %s
-                    """,
-                    (v["vin"],)
-                )
-
-                old = cur.fetchone()
-
-                status = (
-                    old["status"]
-                    if old
-                    else "pending"
-                )
-
-                leads = (
-                    old["lead_count"]
-                    if old
-                    else 0
-                )
-
-                if (
-                    not v["photo"]
-                    and old
-                    and old.get("photo")
-                ):
-                    v["photo"] = old["photo"]
-
-                cur.execute(
-                    """
-                    INSERT INTO vehicles
-                    (
-                        vin, vehicle, condition, mileage,
-                        your_price, marketplace_price,
-                        url, photo, status, lead_count,
-                        last_seen, updated_at
-                    )
-                    VALUES
-                    (
-                        %s,%s,%s,%s,%s,%s,
-                        %s,%s,%s,%s,%s,%s
-                    )
-                    ON CONFLICT (vin)
-                    DO UPDATE SET
-                        vehicle = EXCLUDED.vehicle,
-                        condition = EXCLUDED.condition,
-                        mileage = EXCLUDED.mileage,
-                        your_price = EXCLUDED.your_price,
-                        marketplace_price = EXCLUDED.marketplace_price,
-                        url = EXCLUDED.url,
-                        photo = EXCLUDED.photo,
-                        last_seen = EXCLUDED.last_seen,
-                        updated_at = EXCLUDED.updated_at
-                    """,
-                    (
-                        v["vin"],
-                        v["vehicle"],
-                        v["condition"],
-                        v["mileage"],
-                        v["your_price"],
-                        v["marketplace_price"],
-                        v["url"],
-                        v["photo"],
-                        status,
-                        leads,
-                        now,
-                        now
-                    )
-                )
-
-            if found:
-                vins = list(found.keys())
-
-                cur.execute(
-                    """
-                    UPDATE vehicles
-                    SET
-                        status = 'unavailable',
-                        updated_at = %s
-                    WHERE NOT (vin = ANY(%s))
-                    """,
-                    (now, vins)
-                )
-
-        c.commit()
-
-    return len(found)
-
-# ============================================================
-# STARTUP
-# ============================================================
-
-@app.on_event("startup")
-def startup():
-    init_db()
-
-
-# ============================================================
-# DASHBOARD
-# ============================================================
-
-@app.get("/", response_class=HTMLResponse)
-def home(request: Request):
-    return templates.TemplateResponse(
-        request=request,
-        name="dashboard.html"
-    )
-
-
-# ============================================================
-# INVENTORY API
-# ============================================================
-
-@app.get("/api/inventory")
-def inventory():
-    with db() as c:
-        with c.cursor() as cur:
-            cur.execute("""
-                SELECT *
-                FROM vehicles
-                ORDER BY updated_at DESC
-            """)
-
-            rows = cur.fetchall()
-
-    return rows
-
-
-# ============================================================
-# SUMMARY
-# ============================================================
-
-@app.get("/api/summary")
-def summary():
-    with db() as c:
-        with c.cursor() as cur:
-
-            cur.execute("""
-                SELECT COUNT(*) AS n
-                FROM vehicles
-                WHERE status != 'unavailable'
-            """)
-            total = cur.fetchone()["n"]
-
-            cur.execute("""
-                SELECT COUNT(*) AS n
-                FROM vehicles
-                WHERE status != 'unavailable'
-            """)
-            available = cur.fetchone()["n"]
-
-            cur.execute("""
-                SELECT COUNT(*) AS n
-                FROM vehicles
-                WHERE status = 'published'
-            """)
-            published = cur.fetchone()["n"]
-
-            cur.execute("""
-                SELECT COUNT(*) AS n
-                FROM vehicles
-                WHERE status = 'pending'
-            """)
-            pending = cur.fetchone()["n"]
-
-            cur.execute("""
-                SELECT COUNT(*) AS n
-                FROM vehicles
-                WHERE status = 'error'
-            """)
-            errors = cur.fetchone()["n"]
-
-            cur.execute("""
-                SELECT COALESCE(
-                    SUM(lead_count),
-                    0
-                ) AS n
-                FROM vehicles
-            """)
-            leads = cur.fetchone()["n"]
-
-    return {
-        "vehicles": total,
-        "available": available,
-        "published": published,
-        "pending": pending,
-        "errors": errors,
-        "total_leads": leads
-    }
-
-
-# ============================================================
-# WEBSITE SYNC
-# ============================================================
-
-@app.post("/api/sync")
-def sync():
+def marketplace_price_from_vincue(price):
     """
-    La sincronización directa con southdadetoyota.com
-    permanece desactivada por el bloqueo 403.
+    Precio de publicación:
+    VINCUE + $899 + $595 + $1,000.
 
-    El inventario se actualiza mediante el archivo
-    exportado de VINCUE.
-
-    Esta función no modifica inventario ni precios.
+    No incluye impuestos ni registro.
     """
-    try:
-        with db() as c:
-            with c.cursor() as cur:
-                cur.execute("""
-                    SELECT COUNT(*) AS n
-                    FROM vehicles
-                    WHERE status != 'unavailable'
-                """)
-
-                count = cur.fetchone()["n"]
-
-        return {
-            "ok": True,
-            "count": count,
-            "mode": "vincue",
-            "message": (
-                "La sincronización directa con el website "
-                "está desactivada. Usa Importar Vincue "
-                "para actualizar el inventario. "
-                "Los vehículos guardados en Supabase "
-                "no se modificaron."
-            )
-        }
-
-    except Exception as e:
-        return JSONResponse(
-            {
-                "ok": False,
-                "error": str(e)
-            },
-            status_code=500
-        )
-
-
-# ============================================================
-# AUTO.DEV - FOTOS POR VIN
-# ============================================================
-
-def fetch_auto_dev_photos(vin: str):
-    if not AUTO_DEV_API_KEY:
-        return []
-
-    try:
-        r = requests.get(
-            f"https://api.auto.dev/photos/{vin}",
-            headers={
-                "Authorization": f"Bearer {AUTO_DEV_API_KEY}",
-                "Accept": "application/json"
-            },
-            timeout=15
-        )
-
-        r.raise_for_status()
-
-        retail = (
-            (r.json().get("data") or {}).get("retail")
-            or []
-        )
-
-        photos = []
-        seen = set()
-
-        for url in retail:
-            if (
-                isinstance(url, str)
-                and url.startswith(("http://", "https://"))
-                and url not in seen
-            ):
-                seen.add(url)
-                photos.append(url)
-
-        return photos
-
-    except Exception:
-        return []
-
-
-def fetch_photos_for_vins(vins, max_workers=8):
-    results = {}
-    vins = list(dict.fromkeys(vins))
-
-    if not AUTO_DEV_API_KEY:
-        return results
-
-    with ThreadPoolExecutor(
-        max_workers=max_workers
-    ) as executor:
-
-        jobs = {
-            executor.submit(
-                fetch_auto_dev_photos,
-                vin
-            ): vin
-            for vin in vins
-        }
-
-        for job in as_completed(jobs):
-            vin = jobs[job]
-
-            try:
-                results[vin] = job.result()
-            except Exception:
-                results[vin] = []
-
-    return results
-
-
-def save_vehicle_photos(cur, vin, photos, now):
-    if not photos:
+    if price is None or price <= 0:
         return 0
 
-    cur.execute(
-        "DELETE FROM vehicle_photos WHERE vin = %s",
-        (vin,)
-    )
+    return price + TOTAL_MARKETPLACE_ADDITION
 
-    for position, url in enumerate(photos, 1):
-        cur.execute(
-            """
-            INSERT INTO vehicle_photos
-            (vin, position, url, updated_at)
-            VALUES (%s, %s, %s, %s)
-            ON CONFLICT (vin, position)
-            DO UPDATE SET
-                url = EXCLUDED.url,
-                updated_at = EXCLUDED.updated_at
-            """,
-            (vin, position, url, now)
-        )
-
-    cur.execute(
-        """
-        UPDATE vehicles
-        SET photo = %s, updated_at = %s
-        WHERE vin = %s
-        """,
-        (photos[0], now, vin)
-    )
-
-    return len(photos)
-
-# ============================================================
-# FOTOS VINCUE - COMPATIBILIDAD
-# ============================================================
 
 def normalize_vincue_photo_url(value):
     if not value:
@@ -750,18 +231,622 @@ def excel_cell_url(cell):
     if cell is None:
         return ""
 
-    if (
-        getattr(cell, "hyperlink", None)
-        and cell.hyperlink.target
-    ):
-        candidate = normalize_vincue_photo_url(
-            cell.hyperlink.target
+    hyperlink = getattr(
+        cell,
+        "hyperlink",
+        None
+    )
+
+    if hyperlink and hyperlink.target:
+        url = normalize_vincue_photo_url(
+            hyperlink.target
         )
 
-        if candidate:
-            return candidate
+        if url:
+            return url
 
-    return normalize_vincue_photo_url(cell.value)
+    return normalize_vincue_photo_url(
+        cell.value
+    )
+
+
+# ============================================================
+# WEBSITE - CONSULTA DE FOTO
+# ============================================================
+
+def get_primary_photo(detail_url):
+    if not detail_url or detail_url == SOURCE:
+        return ""
+
+    try:
+        response = requests.get(
+            detail_url,
+            headers=HEADERS,
+            timeout=TIMEOUT
+        )
+
+        response.raise_for_status()
+
+        soup = BeautifulSoup(
+            response.text,
+            "html.parser"
+        )
+
+        for attrs in (
+            {"property": "og:image"},
+            {"property": "og:image:secure_url"},
+            {"name": "twitter:image"}
+        ):
+            meta = soup.find(
+                "meta",
+                attrs=attrs
+            )
+
+            if meta and meta.get("content"):
+                url = urljoin(
+                    response.url,
+                    meta["content"].strip()
+                )
+
+                if url.startswith(("http://", "https://")):
+                    return url
+
+        image_src = soup.find(
+            "link",
+            rel="image_src"
+        )
+
+        if image_src and image_src.get("href"):
+            url = urljoin(
+                response.url,
+                image_src["href"]
+            )
+
+            if url.startswith(("http://", "https://")):
+                return url
+
+        excluded = (
+            "logo",
+            "icon",
+            "carfax",
+            "pixel",
+            "spinner",
+            "placeholder",
+            "avatar",
+            "badge"
+        )
+
+        for image in soup.find_all("img"):
+            raw = (
+                image.get("data-src")
+                or image.get("data-lazy-src")
+                or image.get("data-original")
+                or image.get("src")
+                or ""
+            ).strip()
+
+            if not raw or raw.startswith("data:"):
+                continue
+
+            url = urljoin(
+                response.url,
+                raw
+            )
+
+            lower = url.lower()
+
+            if any(word in lower for word in excluded):
+                continue
+
+            if any(
+                extension in lower
+                for extension in (
+                    ".jpg",
+                    ".jpeg",
+                    ".png",
+                    ".webp"
+                )
+            ):
+                return url
+
+    except requests.RequestException:
+        pass
+
+    return ""
+
+
+# ============================================================
+# WEBSITE COLLECTOR - LEGACY
+# ============================================================
+# Conservado por compatibilidad.
+# No se ejecuta desde /api/sync.
+# El inventario oficial de BoostMarket sigue siendo VINCUE.
+# ============================================================
+
+def collect():
+    response = requests.get(
+        SOURCE,
+        headers=HEADERS,
+        timeout=TIMEOUT
+    )
+
+    response.raise_for_status()
+
+    soup = BeautifulSoup(
+        response.text,
+        "html.parser"
+    )
+
+    found = {}
+
+    for block in soup.find_all(
+        ["article", "li", "div"]
+    ):
+        text = " ".join(
+            block.stripped_strings
+        )
+
+        match = re.search(
+            r"VIN:\s*([A-HJ-NPR-Z0-9]{17})",
+            text,
+            re.I
+        )
+
+        if not match:
+            continue
+
+        vin = match.group(1).upper()
+
+        if vin in found:
+            continue
+
+        price_match = re.search(
+            r"\$[\d,]+(?:\.\d{2})?",
+            text
+        )
+
+        mileage_match = re.search(
+            r"([\d,]+)\s*miles",
+            text,
+            re.I
+        )
+
+        vehicle_name = "Used vehicle"
+
+        for tag in block.find_all(
+            ["h2", "h3", "h4", "a"]
+        ):
+            title = " ".join(
+                tag.stripped_strings
+            )
+
+            if (
+                re.search(r"\b20\d{2}\b", title)
+                and len(title) < 160
+            ):
+                vehicle_name = title
+                break
+
+        detail_url = SOURCE
+
+        for link in block.find_all(
+            "a",
+            href=True
+        ):
+            url = urljoin(
+                response.url,
+                link["href"]
+            )
+
+            if (
+                "southdadetoyota.com" in url
+                and (
+                    "inventory" in url
+                    or "/used-" in url
+                )
+            ):
+                detail_url = url
+                break
+
+        price = (
+            money(price_match.group(0))
+            if price_match
+            else None
+        )
+
+        found[vin] = {
+            "vin": vin,
+            "vehicle": vehicle_name,
+            "condition": "Used",
+            "mileage": (
+                mileage_match.group(1).replace(",", "")
+                if mileage_match
+                else ""
+            ),
+            "your_price": price,
+            "marketplace_price": (
+                marketplace_price_from_vincue(price)
+                if price is not None
+                else 0
+            ),
+            "url": detail_url,
+            "photo": get_primary_photo(detail_url)
+        }
+
+    now = datetime.now(
+        timezone.utc
+    ).isoformat()
+
+    with db() as c:
+        with c.cursor() as cur:
+
+            for vehicle in found.values():
+                cur.execute("""
+                    SELECT status, lead_count, photo
+                    FROM vehicles
+                    WHERE vin = %s
+                """, (vehicle["vin"],))
+
+                old = cur.fetchone()
+
+                status = (
+                    old["status"]
+                    if old
+                    else "pending"
+                )
+
+                leads = (
+                    old["lead_count"]
+                    if old
+                    else 0
+                )
+
+                if (
+                    not vehicle["photo"]
+                    and old
+                    and old.get("photo")
+                ):
+                    vehicle["photo"] = old["photo"]
+
+                cur.execute("""
+                    INSERT INTO vehicles (
+                        vin,
+                        vehicle,
+                        condition,
+                        mileage,
+                        your_price,
+                        marketplace_price,
+                        url,
+                        photo,
+                        status,
+                        lead_count,
+                        last_seen,
+                        updated_at
+                    )
+                    VALUES (
+                        %s,%s,%s,%s,%s,%s,
+                        %s,%s,%s,%s,%s,%s
+                    )
+                    ON CONFLICT (vin)
+                    DO UPDATE SET
+                        vehicle = EXCLUDED.vehicle,
+                        condition = EXCLUDED.condition,
+                        mileage = EXCLUDED.mileage,
+                        your_price = EXCLUDED.your_price,
+                        marketplace_price = EXCLUDED.marketplace_price,
+                        url = EXCLUDED.url,
+                        photo = EXCLUDED.photo,
+                        last_seen = EXCLUDED.last_seen,
+                        updated_at = EXCLUDED.updated_at
+                """, (
+                    vehicle["vin"],
+                    vehicle["vehicle"],
+                    vehicle["condition"],
+                    vehicle["mileage"],
+                    vehicle["your_price"],
+                    vehicle["marketplace_price"],
+                    vehicle["url"],
+                    vehicle["photo"],
+                    status,
+                    leads,
+                    now,
+                    now
+                ))
+
+            if found:
+                cur.execute("""
+                    UPDATE vehicles
+                    SET
+                        status = 'unavailable',
+                        updated_at = %s
+                    WHERE NOT (vin = ANY(%s))
+                """, (
+                    now,
+                    list(found.keys())
+                ))
+
+        c.commit()
+
+    return len(found)
+
+
+# ============================================================
+# STARTUP
+# ============================================================
+
+@app.on_event("startup")
+def startup():
+    init_db()
+
+
+# ============================================================
+# DASHBOARD
+# ============================================================
+
+@app.get(
+    "/",
+    response_class=HTMLResponse
+)
+def home(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="dashboard.html"
+    )
+
+
+# ============================================================
+# INVENTORY API
+# ============================================================
+
+@app.get("/api/inventory")
+def inventory():
+    with db() as c:
+        with c.cursor() as cur:
+            cur.execute("""
+                SELECT *
+                FROM vehicles
+                ORDER BY updated_at DESC
+            """)
+
+            return cur.fetchall()
+
+
+# ============================================================
+# SUMMARY
+# ============================================================
+
+@app.get("/api/summary")
+def summary():
+    with db() as c:
+        with c.cursor() as cur:
+
+            cur.execute("""
+                SELECT COUNT(*) AS n
+                FROM vehicles
+                WHERE status != 'unavailable'
+            """)
+
+            total = cur.fetchone()["n"]
+
+            cur.execute("""
+                SELECT COUNT(*) AS n
+                FROM vehicles
+                WHERE status = 'published'
+            """)
+
+            published = cur.fetchone()["n"]
+
+            cur.execute("""
+                SELECT COUNT(*) AS n
+                FROM vehicles
+                WHERE status = 'pending'
+            """)
+
+            pending = cur.fetchone()["n"]
+
+            cur.execute("""
+                SELECT COUNT(*) AS n
+                FROM vehicles
+                WHERE status = 'error'
+            """)
+
+            errors = cur.fetchone()["n"]
+
+            cur.execute("""
+                SELECT COALESCE(
+                    SUM(lead_count),
+                    0
+                ) AS n
+                FROM vehicles
+            """)
+
+            leads = cur.fetchone()["n"]
+
+    return {
+        "vehicles": total,
+        "available": total,
+        "published": published,
+        "pending": pending,
+        "errors": errors,
+        "total_leads": leads
+    }
+
+
+# ============================================================
+# WEBSITE SYNC - DESACTIVADO
+# ============================================================
+
+@app.post("/api/sync")
+def sync():
+    """
+    No modifica el inventario.
+
+    El website bloquea consultas automáticas desde Render.
+    VINCUE sigue siendo la fuente de inventario.
+    """
+    try:
+        with db() as c:
+            with c.cursor() as cur:
+                cur.execute("""
+                    SELECT COUNT(*) AS n
+                    FROM vehicles
+                    WHERE status != 'unavailable'
+                """)
+
+                count = cur.fetchone()["n"]
+
+        return {
+            "ok": True,
+            "count": count,
+            "mode": "vincue",
+            "message": (
+                "La sincronización directa del website "
+                "está desactivada. Usa Importar Vincue."
+            )
+        }
+
+    except Exception as exc:
+        return JSONResponse(
+            {
+                "ok": False,
+                "error": str(exc)
+            },
+            status_code=500
+        )
+
+
+# ============================================================
+# AUTO.DEV - OBTENER FOTOS
+# ============================================================
+
+def fetch_auto_dev_photos(vin):
+    if not AUTO_DEV_API_KEY:
+        return []
+
+    try:
+        response = requests.get(
+            f"https://api.auto.dev/photos/{vin}",
+            headers={
+                "Authorization": (
+                    f"Bearer {AUTO_DEV_API_KEY}"
+                ),
+                "Accept": "application/json"
+            },
+            timeout=15
+        )
+
+        response.raise_for_status()
+
+        retail = (
+            (response.json().get("data") or {})
+            .get("retail")
+            or []
+        )
+
+        photos = []
+        seen = set()
+
+        for url in retail:
+            if (
+                isinstance(url, str)
+                and url.startswith(("http://", "https://"))
+                and url not in seen
+            ):
+                seen.add(url)
+                photos.append(url)
+
+        return photos
+
+    except Exception:
+        return []
+
+
+def fetch_photos_for_vins(
+    vins,
+    max_workers=8
+):
+    results = {}
+
+    vins = list(
+        dict.fromkeys(vins)
+    )
+
+    if not AUTO_DEV_API_KEY:
+        return results
+
+    with ThreadPoolExecutor(
+        max_workers=max_workers
+    ) as executor:
+
+        jobs = {
+            executor.submit(
+                fetch_auto_dev_photos,
+                vin
+            ): vin
+            for vin in vins
+        }
+
+        for job in as_completed(jobs):
+            vin = jobs[job]
+
+            try:
+                results[vin] = job.result()
+            except Exception:
+                results[vin] = []
+
+    return results
+
+
+def save_vehicle_photos(
+    cur,
+    vin,
+    photos,
+    now
+):
+    if not photos:
+        return 0
+
+    cur.execute("""
+        DELETE FROM vehicle_photos
+        WHERE vin = %s
+    """, (vin,))
+
+    for position, url in enumerate(
+        photos,
+        1
+    ):
+        cur.execute("""
+            INSERT INTO vehicle_photos (
+                vin,
+                position,
+                url,
+                updated_at
+            )
+            VALUES (%s,%s,%s,%s)
+            ON CONFLICT (vin, position)
+            DO UPDATE SET
+                url = EXCLUDED.url,
+                updated_at = EXCLUDED.updated_at
+        """, (
+            vin,
+            position,
+            url,
+            now
+        ))
+
+    cur.execute("""
+        UPDATE vehicles
+        SET
+            photo = %s,
+            updated_at = %s
+        WHERE vin = %s
+    """, (
+        photos[0],
+        now,
+        vin
+    ))
+
+    return len(photos)
 
 
 # ============================================================
@@ -769,40 +854,54 @@ def excel_cell_url(cell):
 # ============================================================
 
 @app.post("/api/import-vincue")
-async def import_vincue(file: UploadFile = File(...)):
+async def import_vincue(
+    file: UploadFile = File(...)
+):
     """
-    Importa el inventario usado desde VINCUE.
+    Importa vehículos usados desde VINCUE.
 
-    El VIN identifica cada vehículo.
-    Conserva los leads registrados en BoostMarket.
-    El precio Marketplace continúa siendo
-    VINCUE + $1,000 hasta completar la prueba.
+    Precio Marketplace:
+        Precio VINCUE
+        + $899 Dealer Fee
+        + $595 Electronic Filing Fee
+        + $1,000 Marketplace
+
+    TOTAL:
+        Precio VINCUE + $2,494
+
+    No incluye impuestos ni registro.
+
+    Conserva leads, estados y fotografías.
     """
     try:
         contents = await file.read()
 
-        wb = load_workbook(
+        workbook = load_workbook(
             BytesIO(contents),
             data_only=True
         )
 
-        ws = wb.active
+        sheet = workbook.active
 
         headers = [
             str(cell.value).strip()
             if cell.value is not None
             else ""
-            for cell in ws[1]
+            for cell in sheet[1]
         ]
 
         columns = {
-            name: i
-            for i, name in enumerate(headers)
+            name: index
+            for index, name in enumerate(headers)
         }
 
         required = [
-            "VIN", "Year", "Model",
-            "StockNo", "Odo", "Price"
+            "VIN",
+            "Year",
+            "Model",
+            "StockNo",
+            "Odo",
+            "Price"
         ]
 
         missing = [
@@ -861,7 +960,7 @@ async def import_vincue(file: UploadFile = File(...)):
         with db() as c:
             with c.cursor() as cur:
 
-                for cells in ws.iter_rows(
+                for cells in sheet.iter_rows(
                     min_row=2,
                     values_only=False
                 ):
@@ -890,17 +989,43 @@ async def import_vincue(file: UploadFile = File(...)):
                     ).strip()
 
                     odo = row[columns["Odo"]]
-                    raw_price = row[columns["Price"]]
+
+                    raw_price = row[
+                        columns["Price"]
+                    ]
 
                     try:
-                        price = float(raw_price or 0)
+                        if isinstance(raw_price, str):
+                            price = float(
+                                raw_price.replace("$", "")
+                                .replace(",", "")
+                                .strip()
+                                or 0
+                            )
+                        else:
+                            price = float(
+                                raw_price or 0
+                            )
                     except (TypeError, ValueError):
                         price = 0
 
+                    # ========================================
+                    # NUEVA FORMULA DE PRECIO
+                    # ========================================
+                    #
+                    # VINCUE + $2,494
+                    #
+                    # $899 Dealer Fee
+                    # $595 Electronic Filing Fee
+                    # $1,000 Margen Marketplace
+                    #
+                    # No incluye impuestos ni registro.
+                    # ========================================
+
                     marketplace_price = (
-                        price + 1000
-                        if price > 0
-                        else 0
+                        marketplace_price_from_vincue(
+                            price
+                        )
                     )
 
                     vehicle = (
@@ -912,8 +1037,9 @@ async def import_vincue(file: UploadFile = File(...)):
                     if "PicCount" in columns:
                         try:
                             pic_count = int(
-                                row[columns["PicCount"]]
-                                or 0
+                                row[
+                                    columns["PicCount"]
+                                ] or 0
                             )
                         except (TypeError, ValueError):
                             pic_count = 0
@@ -922,18 +1048,18 @@ async def import_vincue(file: UploadFile = File(...)):
 
                     if photo_column:
                         photo = excel_cell_url(
-                            cells[columns[photo_column]]
+                            cells[
+                                columns[photo_column]
+                            ]
                         )
 
-                    # Conservar estado y leads existentes.
-                    cur.execute(
-                        """
-                        SELECT status, lead_count
+                    cur.execute("""
+                        SELECT
+                            status,
+                            lead_count
                         FROM vehicles
                         WHERE vin = %s
-                        """,
-                        (vin,)
-                    )
+                    """, (vin,))
 
                     old = cur.fetchone()
 
@@ -950,10 +1076,8 @@ async def import_vincue(file: UploadFile = File(...)):
                         else 0
                     )
 
-                    cur.execute(
-                        """
-                        INSERT INTO vehicles
-                        (
+                    cur.execute("""
+                        INSERT INTO vehicles (
                             vin,
                             vehicle,
                             condition,
@@ -969,8 +1093,7 @@ async def import_vincue(file: UploadFile = File(...)):
                             last_seen,
                             updated_at
                         )
-                        VALUES
-                        (
+                        VALUES (
                             %s,%s,%s,%s,%s,%s,%s,
                             %s,%s,%s,%s,%s,%s,%s
                         )
@@ -992,41 +1115,37 @@ async def import_vincue(file: UploadFile = File(...)):
                             END,
                             last_seen = EXCLUDED.last_seen,
                             updated_at = EXCLUDED.updated_at
-                        """,
-                        (
-                            vin,
-                            vehicle,
-                            "Used",
-                            str(odo or ""),
-                            price,
-                            marketplace_price,
-                            "",
-                            photo,
-                            stock,
-                            pic_count,
-                            status,
-                            leads,
-                            now,
-                            now
-                        )
-                    )
+                    """, (
+                        vin,
+                        vehicle,
+                        "Used",
+                        str(odo or ""),
+                        price,
+                        marketplace_price,
+                        "",
+                        photo,
+                        stock,
+                        pic_count,
+                        status,
+                        leads,
+                        now,
+                        now
+                    ))
 
                     imported += 1
                     imported_vins.append(vin)
 
-                # Marcar como no disponibles los
-                # vehículos ausentes del export completo.
                 if imported_vins:
-                    cur.execute(
-                        """
+                    cur.execute("""
                         UPDATE vehicles
                         SET
                             status = 'unavailable',
                             updated_at = %s
                         WHERE NOT (vin = ANY(%s))
-                        """,
-                        (now, imported_vins)
-                    )
+                    """, (
+                        now,
+                        imported_vins
+                    ))
 
             c.commit()
 
@@ -1034,36 +1153,41 @@ async def import_vincue(file: UploadFile = File(...)):
             "ok": True,
             "count": imported,
             "source": "VINCUE",
+            "marketplace_addition": (
+                TOTAL_MARKETPLACE_ADDITION
+            ),
             "message": (
                 f"{imported} vehículos "
                 "importados desde VINCUE"
             )
         }
 
-    except Exception as e:
+    except Exception as exc:
         return JSONResponse(
             {
                 "ok": False,
-                "error": str(e)
+                "error": str(exc)
             },
             status_code=500
         )
 
+
 # ============================================================
-# PRUEBA DE PRECIO DEL WEBSITE POR VIN
+# PRUEBA DE PRECIO WEBSITE
 # ============================================================
 
 @app.get("/api/test-website-price/{vin}")
 def test_website_price(vin: str):
     """
-    Prueba de lectura solamente.
-
-    Busca el VIN en el inventario público del website.
-    No modifica la base de datos ni los precios actuales.
+    Solo consulta.
+    No modifica precios ni inventario.
     """
     vin = (vin or "").strip().upper()
 
-    if not re.fullmatch(r"[A-HJ-NPR-Z0-9]{17}", vin):
+    if not re.fullmatch(
+        r"[A-HJ-NPR-Z0-9]{17}",
+        vin
+    ):
         return JSONResponse(
             {
                 "ok": False,
@@ -1086,13 +1210,14 @@ def test_website_price(vin: str):
             "html.parser"
         )
 
-        # Buscar el bloque que contiene el VIN.
         matching_blocks = []
 
         for tag in soup.find_all(
             ["article", "li", "div"]
         ):
-            text = " ".join(tag.stripped_strings)
+            text = " ".join(
+                tag.stripped_strings
+            )
 
             if vin in text.upper():
                 matching_blocks.append(tag)
@@ -1101,15 +1226,15 @@ def test_website_price(vin: str):
             return {
                 "ok": False,
                 "vin": vin,
-                "website_status": response.status_code,
+                "website_status": (
+                    response.status_code
+                ),
                 "message": (
-                    "El website respondió, pero no "
-                    "se encontró este VIN."
+                    "El website respondió, pero "
+                    "no se encontró el VIN."
                 )
             }
 
-        # Usar el bloque más pequeño que contiene el VIN
-        # para evitar mezclar precios de otros vehículos.
         block = min(
             matching_blocks,
             key=lambda tag: len(
@@ -1117,36 +1242,38 @@ def test_website_price(vin: str):
             )
         )
 
-        text = " ".join(block.stripped_strings)
+        text = " ".join(
+            block.stripped_strings
+        )
 
         prices = re.findall(
-            r'\$\s*[\d,]+(?:\.\d{2})?',
+            r"\$\s*[\d,]+(?:\.\d{2})?",
             text
         )
 
-        # No asumir que el primer precio es el final.
-        # Devolver candidatos para revisión.
         candidates = []
 
         for value in prices:
-            parsed = money(value)
+            amount = money(value)
 
-            if parsed is not None:
+            if amount is not None:
                 candidates.append({
                     "display": value,
-                    "amount": parsed
+                    "amount": amount
                 })
 
         return {
             "ok": True,
             "vin": vin,
-            "website_status": response.status_code,
+            "website_status": (
+                response.status_code
+            ),
             "price_candidates": candidates,
             "website_text": text[:1800],
             "message": (
-                "Prueba completada. Los precios son "
-                "candidatos y deben verificarse antes "
-                "de usarse en Marketplace."
+                "Consulta completada. "
+                "Los precios encontrados "
+                "requieren verificación."
             )
         }
 
@@ -1157,19 +1284,16 @@ def test_website_price(vin: str):
             else 502
         )
 
-        return JSONResponse(
-            {
-                "ok": False,
-                "vin": vin,
-                "website_status": status,
-                "message": (
-                    "El website rechazó la consulta. "
-                    "BoostMarket mantiene los precios "
-                    "actuales de VINCUE."
-                )
-            },
-            status_code=200
-        )
+        return {
+            "ok": False,
+            "vin": vin,
+            "website_status": status,
+            "message": (
+                "El website rechazó la consulta. "
+                "Se mantiene el cálculo "
+                "VINCUE + $2,494."
+            )
+        }
 
     except requests.RequestException as exc:
         return {
@@ -1177,24 +1301,29 @@ def test_website_price(vin: str):
             "vin": vin,
             "message": (
                 "No se pudo consultar el website. "
-                "BoostMarket mantiene los precios "
-                "actuales de VINCUE."
+                "Se mantiene VINCUE + $2,494."
             ),
             "detail": str(exc)
         }
 
 
 # ============================================================
-# PRUEBA AUTO.DEV - FOTOS POR VIN
+# PRUEBA FOTOS AUTO.DEV
 # ============================================================
 
 @app.get("/api/test-photos/{vin}")
 def test_auto_dev_photos(vin: str):
     vin = (vin or "").strip().upper()
 
-    if not re.fullmatch(r"[A-HJ-NPR-Z0-9]{17}", vin):
+    if not re.fullmatch(
+        r"[A-HJ-NPR-Z0-9]{17}",
+        vin
+    ):
         return JSONResponse(
-            {"ok": False, "error": "VIN inválido"},
+            {
+                "ok": False,
+                "error": "VIN inválido"
+            },
             status_code=400
         )
 
@@ -1203,8 +1332,8 @@ def test_auto_dev_photos(vin: str):
             {
                 "ok": False,
                 "error": (
-                    "AUTO_DEV_API_KEY no está "
-                    "configurado en Render"
+                    "AUTO_DEV_API_KEY "
+                    "no está configurado"
                 )
             },
             status_code=500
@@ -1214,7 +1343,9 @@ def test_auto_dev_photos(vin: str):
         response = requests.get(
             f"https://api.auto.dev/photos/{vin}",
             headers={
-                "Authorization": f"Bearer {AUTO_DEV_API_KEY}",
+                "Authorization": (
+                    f"Bearer {AUTO_DEV_API_KEY}"
+                ),
                 "Accept": "application/json"
             },
             timeout=TIMEOUT
@@ -1232,7 +1363,9 @@ def test_auto_dev_photos(vin: str):
                 {
                     "ok": False,
                     "vin": vin,
-                    "auto_dev_status": response.status_code,
+                    "auto_dev_status": (
+                        response.status_code
+                    ),
                     "response": payload
                 },
                 status_code=response.status_code
@@ -1255,7 +1388,9 @@ def test_auto_dev_photos(vin: str):
             for url in retail
             if (
                 isinstance(url, str)
-                and url.startswith(("http://", "https://"))
+                and url.startswith(
+                    ("http://", "https://")
+                )
             )
         ]
 
@@ -1287,7 +1422,10 @@ def sync_auto_dev_photos():
         return JSONResponse(
             {
                 "ok": False,
-                "error": "AUTO_DEV_API_KEY no está configurado"
+                "error": (
+                    "AUTO_DEV_API_KEY "
+                    "no está configurado"
+                )
             },
             status_code=500
         )
@@ -1306,7 +1444,9 @@ def sync_auto_dev_photos():
                 for row in cur.fetchall()
             ]
 
-    results = fetch_photos_for_vins(vins)
+    results = fetch_photos_for_vins(
+        vins
+    )
 
     now = datetime.now(
         timezone.utc
@@ -1318,8 +1458,12 @@ def sync_auto_dev_photos():
 
     with db() as c:
         with c.cursor() as cur:
+
             for vin in vins:
-                photos = results.get(vin, [])
+                photos = results.get(
+                    vin,
+                    []
+                )
 
                 if photos:
                     total_photos += save_vehicle_photos(
@@ -1328,6 +1472,7 @@ def sync_auto_dev_photos():
                         photos,
                         now
                     )
+
                     with_photos += 1
                 else:
                     missing.append(vin)
@@ -1342,6 +1487,7 @@ def sync_auto_dev_photos():
         "vehicles_without_photos": len(missing),
         "missing_vins": missing
     }
+
 
 # ============================================================
 # PUBLICACIONES
@@ -1359,40 +1505,54 @@ def publicaciones(request: Request):
 
 
 # ============================================================
-# PHOTO PROXY - AUTO.DEV
+# PHOTO PROXY
 # ============================================================
 
 @app.get("/api/photo/{vin}/{position}")
-def vehicle_photo(vin: str, position: int):
+def vehicle_photo(
+    vin: str,
+    position: int
+):
     vin = (vin or "").strip().upper()
 
-    if not re.fullmatch(r"[A-HJ-NPR-Z0-9]{17}", vin):
-        return Response(status_code=404)
+    if not re.fullmatch(
+        r"[A-HJ-NPR-Z0-9]{17}",
+        vin
+    ):
+        return Response(
+            status_code=404
+        )
 
     if position < 1:
-        return Response(status_code=404)
+        return Response(
+            status_code=404
+        )
 
     with db() as c:
         with c.cursor() as cur:
-            cur.execute(
-                """
+            cur.execute("""
                 SELECT url
                 FROM vehicle_photos
-                WHERE vin = %s AND position = %s
-                """,
-                (vin, position)
-            )
+                WHERE vin = %s
+                AND position = %s
+            """, (
+                vin,
+                position
+            ))
 
             row = cur.fetchone()
 
     if not row or not row.get("url"):
-        return Response(status_code=404)
+        return Response(
+            status_code=404
+        )
 
     try:
         headers = {
             "Accept": (
-                "image/avif,image/webp,image/apng,"
-                "image/svg+xml,image/*,*/*;q=0.8"
+                "image/avif,image/webp,"
+                "image/apng,image/svg+xml,"
+                "image/*,*/*;q=0.8"
             ),
             "User-Agent": HEADERS["User-Agent"]
         }
@@ -1415,23 +1575,31 @@ def vehicle_photo(vin: str, position: int):
             "image/jpeg"
         )
 
-        if not content_type.lower().startswith("image/"):
-            return Response(status_code=502)
+        if not content_type.lower().startswith(
+            "image/"
+        ):
+            return Response(
+                status_code=502
+            )
 
         return Response(
             content=response.content,
             media_type=content_type.split(";")[0],
             headers={
-                "Cache-Control": "public, max-age=86400"
+                "Cache-Control": (
+                    "public, max-age=86400"
+                )
             }
         )
 
     except requests.RequestException:
-        return Response(status_code=502)
+        return Response(
+            status_code=502
+        )
 
 
 # ============================================================
-# VEHICLE DETAIL API
+# VEHICLE DETAIL
 # ============================================================
 
 @app.get("/api/vehicle/{vin}")
@@ -1440,18 +1608,15 @@ def vehicle_detail(vin: str):
 
     with db() as c:
         with c.cursor() as cur:
-            cur.execute(
-                """
+            cur.execute("""
                 SELECT *
                 FROM vehicles
                 WHERE vin = %s
-                """,
-                (vin,)
-            )
+            """, (vin,))
 
-            row = cur.fetchone()
+            vehicle = cur.fetchone()
 
-    if not row:
+    if not vehicle:
         return JSONResponse(
             {
                 "ok": False,
@@ -1462,24 +1627,24 @@ def vehicle_detail(vin: str):
 
     with db() as c:
         with c.cursor() as cur:
-            cur.execute(
-                """
+            cur.execute("""
                 SELECT position
                 FROM vehicle_photos
                 WHERE vin = %s
                 ORDER BY position
-                """,
-                (vin,)
-            )
+            """, (vin,))
 
             photos = [
-                f"/api/photo/{vin}/{item['position']}"
+                (
+                    f"/api/photo/{vin}/"
+                    f"{item['position']}"
+                )
                 for item in cur.fetchall()
             ]
 
     return {
         "ok": True,
-        "vehicle": row,
+        "vehicle": vehicle,
         "photos": photos,
         "photo_count": len(photos)
     }
