@@ -21,6 +21,7 @@ from psycopg.rows import dict_row
 # ============================================================
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
+AUTO_DEV_API_KEY = os.environ.get("AUTO_DEV_API_KEY")
 
 TIMEOUT = 30
 
@@ -827,6 +828,40 @@ async def import_vincue(file: UploadFile = File(...)):
             {"ok": False, "error": str(e)},
             status_code=500,
         )
+
+
+# ============================================================
+# PRUEBA AUTO.DEV - FOTOS POR VIN
+# ============================================================
+
+@app.get("/api/test-photos/{vin}")
+def test_auto_dev_photos(vin: str):
+    vin = (vin or "").strip().upper()
+    if not re.fullmatch(r"[A-HJ-NPR-Z0-9]{17}", vin):
+        return JSONResponse({"ok": False, "error": "VIN inválido"}, status_code=400)
+    if not AUTO_DEV_API_KEY:
+        return JSONResponse({"ok": False, "error": "AUTO_DEV_API_KEY no está configurado en Render"}, status_code=500)
+    try:
+        response = requests.get(
+            f"https://api.auto.dev/photos/{vin}",
+            headers={"Authorization": f"Bearer {AUTO_DEV_API_KEY}", "Accept": "application/json"},
+            timeout=TIMEOUT,
+        )
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = {"raw": response.text[:1000]}
+        if response.status_code != 200:
+            return JSONResponse(
+                {"ok": False, "vin": vin, "auto_dev_status": response.status_code, "response": payload},
+                status_code=response.status_code,
+            )
+        data = payload.get("data") or {} if isinstance(payload, dict) else {}
+        retail = data.get("retail") or [] if isinstance(data, dict) else []
+        photos = [u for u in retail if isinstance(u, str) and u.startswith(("http://", "https://"))]
+        return {"ok": True, "vin": vin, "count": len(photos), "photos": photos}
+    except requests.RequestException as exc:
+        return JSONResponse({"ok": False, "vin": vin, "error": str(exc)}, status_code=502)
 
 
 # ============================================================
