@@ -1,7 +1,24 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Preparar publicación - BoostMarket</title>
+<link rel="stylesheet" href="/static/app.css">
+
 <style>
 .prepare-container{
     max-width:1180px;
     margin:0 auto;
+}
+
+.prepare-card{
+    background:#fff;
+    border:1px solid #e4e7ec;
+    border-radius:11px;
+    padding:18px;
+    margin-bottom:18px;
 }
 
 .prepare-grid{
@@ -10,21 +27,13 @@
     gap:18px;
 }
 
-.prepare-card{
-    background:#fff;
-    border:1px solid #e4e7ec;
-    border-radius:11px;
-    padding:20px;
-    margin-bottom:18px;
-}
-
 .prepare-card h2{
     margin:0 0 16px;
     font-size:18px;
 }
 
 .vehicle-title{
-    font-size:24px;
+    font-size:23px;
     font-weight:800;
     margin-bottom:5px;
 }
@@ -38,6 +47,7 @@
 .info-row{
     display:flex;
     justify-content:space-between;
+    gap:15px;
     padding:10px 0;
     border-bottom:1px solid #edf0f3;
 }
@@ -55,6 +65,15 @@
     font-weight:800;
 }
 
+.status{
+    padding:6px 10px;
+    border-radius:99px;
+    background:#fff4d7;
+    color:#8a5b00;
+    font-size:11px;
+    font-weight:700;
+}
+
 .field{
     margin-bottom:15px;
 }
@@ -70,6 +89,7 @@
 .field input,
 .field textarea{
     width:100%;
+    box-sizing:border-box;
     padding:11px;
     border:1px solid #d4d9e0;
     border-radius:7px;
@@ -78,7 +98,7 @@
 }
 
 .field textarea{
-    min-height:180px;
+    min-height:175px;
     resize:vertical;
 }
 
@@ -94,15 +114,6 @@
     border:1px solid #d4d9e0;
 }
 
-.status{
-    padding:6px 10px;
-    border-radius:99px;
-    background:#fff4d7;
-    color:#8a5b00;
-    font-size:11px;
-    font-weight:700;
-}
-
 .loading{
     padding:40px;
     text-align:center;
@@ -110,14 +121,13 @@
 }
 
 
-/* ==============================
-   GALERÍA COMPACTA
-============================== */
+/* GALERIA COMPACTA */
 
 .gallery-head{
     display:flex;
-    align-items:center;
     justify-content:space-between;
+    align-items:center;
+    gap:12px;
     margin-bottom:12px;
 }
 
@@ -134,21 +144,22 @@
     border-radius:99px;
 }
 
-
-/* La galería completa ya no ocupa
-   toda la pantalla */
+.gallery-layout{
+    display:grid;
+    grid-template-columns:46% 54%;
+    gap:12px;
+    height:290px;
+}
 
 .main-photo-wrap{
-    width:48%;
-    height:300px;
     background:#f2f4f7;
     border:1px solid #e4e7ec;
     border-radius:10px;
     overflow:hidden;
-    display:inline-flex;
-    vertical-align:top;
+    display:flex;
     align-items:center;
     justify-content:center;
+    min-width:0;
 }
 
 .main-photo{
@@ -163,29 +174,25 @@
     font-size:14px;
 }
 
-
-/* Miniaturas al lado de la foto principal */
-
 .thumbnails{
-    width:50%;
-    height:300px;
-    display:inline-grid;
-    grid-template-columns:repeat(4,1fr);
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
     gap:7px;
-    padding-left:10px;
-    vertical-align:top;
     overflow-y:auto;
-    box-sizing:border-box;
+    align-content:start;
+    padding-right:3px;
+    min-width:0;
 }
 
 .thumb{
     width:100%;
-    height:68px;
+    height:65px;
     object-fit:cover;
     border:2px solid transparent;
     border-radius:7px;
     cursor:pointer;
     background:#f2f4f7;
+    box-sizing:border-box;
 }
 
 .thumb:hover{
@@ -196,36 +203,782 @@
     border-color:#111827;
 }
 
-
-/* ==============================
-   TELÉFONO
-============================== */
-
 @media(max-width:800px){
 
     .prepare-grid{
         grid-template-columns:1fr;
     }
 
+    .gallery-layout{
+        grid-template-columns:1fr;
+        height:auto;
+    }
+
     .main-photo-wrap{
-        width:100%;
-        height:260px;
-        display:flex;
+        height:250px;
     }
 
     .thumbnails{
-        width:100%;
-        height:auto;
-        max-height:200px;
-        display:grid;
-        grid-template-columns:repeat(4,1fr);
-        padding-left:0;
-        margin-top:8px;
+        grid-template-columns:repeat(4,minmax(0,1fr));
+        max-height:180px;
     }
 
     .thumb{
         height:auto;
         aspect-ratio:4/3;
     }
+
+    .action-row{
+        flex-direction:column;
+    }
 }
 </style>
+</head>
+
+
+<body>
+
+<aside>
+
+<div class="logo">
+    SOUTH DADE<br>TOYOTA
+    <small>MARKETPLACE MANAGER</small>
+</div>
+
+<nav>
+    <a href="/">Dashboard</a>
+    <a href="/inventario">Inventario</a>
+    <a href="/publicaciones" class="active">Publicaciones</a>
+    <a href="/leads">Leads</a>
+    <a href="/actividad">Actividad</a>
+    <a href="/configuracion">Configuración</a>
+</nav>
+
+<div class="foot">
+    Inventario: South Dade Toyota<br>
+    Sincronización automática
+</div>
+
+</aside>
+
+
+<main class="main">
+
+<header>
+
+<div>
+    <h1>Preparar publicación</h1>
+    <p>Facebook Marketplace</p>
+</div>
+
+<button onclick="window.location.href='/publicaciones'">
+    ← Publicaciones
+</button>
+
+</header>
+
+
+<section class="content">
+
+<div class="prepare-container">
+
+<div id="loading" class="prepare-card loading">
+    Cargando vehículo...
+</div>
+
+
+<div id="vehicleContent" style="display:none">
+
+
+<!-- FOTOS -->
+
+<div class="prepare-card">
+
+    <div class="gallery-head">
+
+        <h2>Fotos del vehículo</h2>
+
+        <span
+            class="photo-count"
+            id="photoCount"
+        >
+            0 fotos
+        </span>
+
+    </div>
+
+
+    <div class="gallery-layout">
+
+        <div
+            class="main-photo-wrap"
+            id="mainPhotoWrap"
+        >
+            <span class="no-photo">
+                Sin fotos disponibles
+            </span>
+        </div>
+
+
+        <div
+            class="thumbnails"
+            id="thumbnails"
+        ></div>
+
+    </div>
+
+</div>
+
+
+<!-- INFORMACION -->
+
+<div class="prepare-grid">
+
+
+<div>
+
+<div class="prepare-card">
+
+    <div
+        class="vehicle-title"
+        id="vehicleName"
+    ></div>
+
+    <div
+        class="vehicle-vin"
+        id="vehicleVin"
+    ></div>
+
+
+    <div class="info-row">
+        <span>Millaje</span>
+        <strong id="mileage">—</strong>
+    </div>
+
+
+    <div class="info-row">
+        <span>Your Price</span>
+        <strong id="yourPrice">—</strong>
+    </div>
+
+
+    <div class="info-row">
+
+        <span>
+            Precio Marketplace
+        </span>
+
+        <strong
+            class="market-price"
+            id="marketPrice"
+        >
+            —
+        </strong>
+
+    </div>
+
+
+    <div class="info-row">
+
+        <span>Estado</span>
+
+        <strong>
+            <span
+                class="status"
+                id="status"
+            >
+                pending
+            </span>
+        </strong>
+
+    </div>
+
+</div>
+
+
+<div class="prepare-card">
+
+<h2>Información del vehículo</h2>
+
+
+<div class="info-row">
+    <span>VIN</span>
+    <strong id="vinInfo">—</strong>
+</div>
+
+
+<div class="info-row">
+    <span>Condición</span>
+    <strong id="condition">Used</strong>
+</div>
+
+
+<div class="info-row">
+    <span>Stock</span>
+    <strong id="stock">—</strong>
+</div>
+
+</div>
+
+</div>
+
+
+<!-- MARKETPLACE -->
+
+<div>
+
+<div class="prepare-card">
+
+<h2>
+    Publicación de Marketplace
+</h2>
+
+
+<div class="field">
+
+<label>TÍTULO</label>
+
+<input id="listingTitle">
+
+</div>
+
+
+<div class="field">
+
+<label>PRECIO</label>
+
+<input id="listingPrice">
+
+</div>
+
+
+<div class="field">
+
+<label>DESCRIPCIÓN</label>
+
+<textarea id="description"></textarea>
+
+</div>
+
+
+<div class="action-row">
+
+<button onclick="generateDescription()">
+    Generar descripción
+</button>
+
+<button
+    class="secondary"
+    onclick="copyListing()"
+>
+    Copiar publicación
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+</main>
+
+
+<script>
+
+const money = (value) => {
+
+    const number =
+        Number(value || 0);
+
+    return new Intl.NumberFormat(
+        "en-US",
+        {
+            style:"currency",
+            currency:"USD",
+            maximumFractionDigits:0
+        }
+    ).format(number);
+
+};
+
+
+const vin =
+    decodeURIComponent(
+        window.location.pathname
+            .split("/")
+            .pop()
+    );
+
+
+let vehicle = null;
+let photos = [];
+
+
+/* GALERIA */
+
+function renderPhotos(){
+
+    const count =
+        document.getElementById(
+            "photoCount"
+        );
+
+    const mainWrap =
+        document.getElementById(
+            "mainPhotoWrap"
+        );
+
+    const thumbs =
+        document.getElementById(
+            "thumbnails"
+        );
+
+
+    count.textContent =
+        photos.length +
+        (
+            photos.length === 1
+                ? " foto"
+                : " fotos"
+        );
+
+
+    thumbs.innerHTML = "";
+
+
+    if(photos.length === 0){
+
+        mainWrap.innerHTML =
+            '<span class="no-photo">' +
+            'Sin fotos disponibles' +
+            '</span>';
+
+        return;
+
+    }
+
+
+    mainWrap.innerHTML = "";
+
+
+    const mainImage =
+        document.createElement(
+            "img"
+        );
+
+
+    mainImage.id =
+        "mainPhoto";
+
+    mainImage.className =
+        "main-photo";
+
+    mainImage.src =
+        photos[0];
+
+    mainImage.alt =
+        vehicle && vehicle.vehicle
+            ? vehicle.vehicle
+            : "Vehículo";
+
+
+    mainWrap.appendChild(
+        mainImage
+    );
+
+
+    photos.forEach(
+        function(url,index){
+
+            const thumbnail =
+                document.createElement(
+                    "img"
+                );
+
+
+            thumbnail.src =
+                url;
+
+            thumbnail.alt =
+                "Foto " +
+                (index + 1);
+
+            thumbnail.loading =
+                "lazy";
+
+
+            thumbnail.className =
+                index === 0
+                    ? "thumb active"
+                    : "thumb";
+
+
+            thumbnail.addEventListener(
+                "click",
+                function(){
+
+                    mainImage.src =
+                        url;
+
+
+                    document
+                        .querySelectorAll(
+                            ".thumb"
+                        )
+                        .forEach(
+                            function(item){
+                                item.classList.remove(
+                                    "active"
+                                );
+                            }
+                        );
+
+
+                    thumbnail
+                        .classList
+                        .add(
+                            "active"
+                        );
+
+                }
+            );
+
+
+            thumbs.appendChild(
+                thumbnail
+            );
+
+        }
+    );
+
+}
+
+
+/* CARGAR VEHICULO */
+
+async function loadVehicle(){
+
+    try{
+
+        const response =
+            await fetch(
+                "/api/vehicle/" +
+                encodeURIComponent(
+                    vin
+                )
+            );
+
+
+        if(!response.ok){
+
+            throw new Error(
+                "No se pudo cargar el vehículo"
+            );
+
+        }
+
+
+        const result =
+            await response.json();
+
+
+        if(!result.ok){
+
+            throw new Error(
+                result.error ||
+                "Vehículo no encontrado"
+            );
+
+        }
+
+
+        vehicle =
+            result.vehicle;
+
+
+        photos =
+            Array.isArray(
+                result.photos
+            )
+                ? result.photos
+                : [];
+
+
+        document
+            .getElementById(
+                "vehicleName"
+            )
+            .textContent =
+                vehicle.vehicle ||
+                "Vehículo";
+
+
+        document
+            .getElementById(
+                "vehicleVin"
+            )
+            .textContent =
+                "VIN: " +
+                vehicle.vin;
+
+
+        document
+            .getElementById(
+                "vinInfo"
+            )
+            .textContent =
+                vehicle.vin ||
+                "—";
+
+
+        document
+            .getElementById(
+                "mileage"
+            )
+            .textContent =
+                vehicle.mileage
+                    ? Number(
+                        vehicle.mileage
+                      ).toLocaleString(
+                        "en-US"
+                      ) + " mi"
+                    : "—";
+
+
+        document
+            .getElementById(
+                "yourPrice"
+            )
+            .textContent =
+                money(
+                    vehicle.your_price
+                );
+
+
+        document
+            .getElementById(
+                "marketPrice"
+            )
+            .textContent =
+                money(
+                    vehicle.marketplace_price
+                );
+
+
+        document
+            .getElementById(
+                "condition"
+            )
+            .textContent =
+                vehicle.condition ||
+                "Used";
+
+
+        document
+            .getElementById(
+                "status"
+            )
+            .textContent =
+                vehicle.status ||
+                "pending";
+
+
+        document
+            .getElementById(
+                "stock"
+            )
+            .textContent =
+                vehicle.stock ||
+                "—";
+
+
+        document
+            .getElementById(
+                "listingTitle"
+            )
+            .value =
+                vehicle.vehicle ||
+                "";
+
+
+        document
+            .getElementById(
+                "listingPrice"
+            )
+            .value =
+                vehicle.marketplace_price ||
+                "";
+
+
+        generateDescription();
+
+        renderPhotos();
+
+
+        document
+            .getElementById(
+                "loading"
+            )
+            .style.display =
+                "none";
+
+
+        document
+            .getElementById(
+                "vehicleContent"
+            )
+            .style.display =
+                "block";
+
+
+    }
+    catch(error){
+
+        document
+            .getElementById(
+                "loading"
+            )
+            .innerHTML =
+                "<strong>Error:</strong> " +
+                error.message;
+
+    }
+
+}
+
+
+/* DESCRIPCION */
+
+function generateDescription(){
+
+    if(!vehicle){
+        return;
+    }
+
+
+    const name =
+        vehicle.vehicle ||
+        "Used Vehicle";
+
+
+    const mileage =
+        vehicle.mileage
+            ? Number(
+                vehicle.mileage
+              ).toLocaleString(
+                "en-US"
+              ) + " miles"
+            : "";
+
+
+    let description =
+        name + "\n\n";
+
+
+    if(mileage){
+
+        description +=
+            "Mileage: " +
+            mileage +
+            "\n";
+
+    }
+
+
+    description +=
+        "VIN: " +
+        vehicle.vin +
+        "\n\n" +
+        "Financing options available.\n" +
+        "Trade-ins welcome.\n\n" +
+        "Send me a message for more information, financing options, or to schedule a test drive.";
+
+
+    document
+        .getElementById(
+            "description"
+        )
+        .value =
+            description;
+
+}
+
+
+/* COPIAR */
+
+async function copyListing(){
+
+    const title =
+        document
+            .getElementById(
+                "listingTitle"
+            )
+            .value;
+
+
+    const price =
+        document
+            .getElementById(
+                "listingPrice"
+            )
+            .value;
+
+
+    const description =
+        document
+            .getElementById(
+                "description"
+            )
+            .value;
+
+
+    const text =
+        title +
+        "\n\n" +
+        "Price: " +
+        money(
+            Number(price)
+        ) +
+        "\n\n" +
+        description;
+
+
+    try{
+
+        await navigator
+            .clipboard
+            .writeText(
+                text
+            );
+
+
+        alert(
+            "Publicación copiada."
+        );
+
+    }
+    catch(error){
+
+        alert(
+            "No se pudo copiar la publicación."
+        );
+
+    }
+
+}
+
+
+loadVehicle();
+
+</script>
+
+</body>
+</html>
