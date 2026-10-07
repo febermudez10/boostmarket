@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from urllib.parse import urljoin
 
 from fastapi import FastAPI, Request, UploadFile, File
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 from bs4 import BeautifulSoup
 from openpyxl import load_workbook
@@ -991,6 +991,65 @@ def publicaciones(
 
 
 # ============================================================
+# PHOTO PROXY - AUTO.DEV
+# ============================================================
+
+@app.get("/api/photo/{vin}/{position}")
+def vehicle_photo(vin: str, position: int):
+    vin = (vin or "").strip().upper()
+
+    if not re.fullmatch(r"[A-HJ-NPR-Z0-9]{17}", vin):
+        return Response(status_code=404)
+
+    if position < 1:
+        return Response(status_code=404)
+
+    with db() as c:
+        with c.cursor() as cur:
+            cur.execute(
+                """
+                SELECT url
+                FROM vehicle_photos
+                WHERE vin = %s AND position = %s
+                """,
+                (vin, position),
+            )
+            row = cur.fetchone()
+
+    if not row or not row.get("url"):
+        return Response(status_code=404)
+
+    try:
+        headers = {
+            "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+            "User-Agent": HEADERS["User-Agent"],
+        }
+
+        if AUTO_DEV_API_KEY:
+            headers["Authorization"] = f"Bearer {AUTO_DEV_API_KEY}"
+
+        r = requests.get(
+            row["url"],
+            headers=headers,
+            timeout=TIMEOUT,
+        )
+        r.raise_for_status()
+
+        content_type = r.headers.get("content-type", "image/jpeg")
+        if not content_type.lower().startswith("image/"):
+            return Response(status_code=502)
+
+        return Response(
+            content=r.content,
+            media_type=content_type.split(";")[0],
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+
+    except requests.RequestException:
+        return Response(status_code=502)
+
+
+# ============================================================
 # VEHICLE DETAIL API
 # ============================================================
 
@@ -1027,8 +1086,14 @@ def vehicle_detail(vin: str):
 
     with db() as c:
         with c.cursor() as cur:
-            cur.execute("SELECT url FROM vehicle_photos WHERE vin=%s ORDER BY position", (vin,))
-            photos = [item["url"] for item in cur.fetchall()]
+            cur.execute(
+                "SELECT position FROM vehicle_photos WHERE vin=%s ORDER BY position",
+                (vin,),
+            )
+            photos = [
+                f"/api/photo/{vin}/{item['position']}"
+                for item in cur.fetchall()
+            ]
 
     return {
         "ok": True,
