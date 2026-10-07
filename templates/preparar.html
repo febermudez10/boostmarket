@@ -118,7 +118,7 @@
     color:#697586;
 }
 
-/* GALERÍA */
+/* GALERÍA ARRIBA */
 
 .gallery-head{
     display:flex;
@@ -143,7 +143,7 @@
 
 .main-photo-wrap{
     width:100%;
-    aspect-ratio:4/3;
+    aspect-ratio:16/9;
     background:#f2f4f7;
     border:1px solid #e4e7ec;
     border-radius:10px;
@@ -167,10 +167,10 @@
 
 .thumbnails{
     display:grid;
-    grid-template-columns:repeat(5,1fr);
+    grid-template-columns:repeat(8,1fr);
     gap:8px;
     margin-top:10px;
-    max-height:240px;
+    max-height:245px;
     overflow:auto;
 }
 
@@ -189,12 +189,17 @@
 }
 
 @media(max-width:800px){
+
     .prepare-grid{
         grid-template-columns:1fr;
     }
 
     .thumbnails{
         grid-template-columns:repeat(4,1fr);
+    }
+
+    .main-photo-wrap{
+        aspect-ratio:4/3;
     }
 }
 </style>
@@ -204,41 +209,43 @@
 
 <aside>
 
-    <div class="logo">
-        SOUTH DADE<br>TOYOTA
-        <small>MARKETPLACE MANAGER</small>
-    </div>
+<div class="logo">
+    SOUTH DADE<br>TOYOTA
+    <small>MARKETPLACE MANAGER</small>
+</div>
 
-    <nav>
-        <a href="/">Dashboard</a>
-        <a href="/inventario">Inventario</a>
-        <a href="/publicaciones" class="active">Publicaciones</a>
-        <a href="/leads">Leads</a>
-        <a href="/actividad">Actividad</a>
-        <a href="/configuracion">Configuración</a>
-    </nav>
+<nav>
+    <a href="/">Dashboard</a>
+    <a href="/inventario">Inventario</a>
+    <a href="/publicaciones" class="active">Publicaciones</a>
+    <a href="/leads">Leads</a>
+    <a href="/actividad">Actividad</a>
+    <a href="/configuracion">Configuración</a>
+</nav>
 
-    <div class="foot">
-        Inventario: South Dade Toyota<br>
-        Sincronización automática
-    </div>
+<div class="foot">
+    Inventario: South Dade Toyota<br>
+    Sincronización automática
+</div>
 
 </aside>
+
 
 <main class="main">
 
 <header>
 
-    <div>
-        <h1>Preparar publicación</h1>
-        <p>Facebook Marketplace</p>
-    </div>
+<div>
+    <h1>Preparar publicación</h1>
+    <p>Facebook Marketplace</p>
+</div>
 
-    <button onclick="window.location.href='/publicaciones'">
-        ← Publicaciones
-    </button>
+<button onclick="window.location.href='/publicaciones'">
+    ← Publicaciones
+</button>
 
 </header>
+
 
 <section class="content">
 
@@ -248,122 +255,250 @@
     Cargando vehículo...
 </div>
 
+
 <div id="vehicleContent" style="display:none">
 
-<div class="prepare-grid">
 
-<div>
-
-<div class="prepare-card">
-
-    <div class="vehicle-title" id="vehicleName"></div>
-    <div class="vehicle-vin" id="vehicleVin"></div>
-
-    <div class="info-row">
-        <span>Millaje</span>
-        <strong id="mileage">—</strong>
-    </div>
-
-    <div class="info-row">
-        <span>Your Price</span>
-        <strong id="yourPrice">—</strong>
-    </div>
-
-    <div class="info-row">
-        <span>Precio Marketplace</span>
-        <strong class="market-price" id="marketPrice">—</strong>
-    </div>
-
-    <div class="info-row">
-        <span>Estado</span>
-        <strong>
-            <span class="status" id="status">pending</span>
-        </strong>
-    </div>
-
-</div>
-
-<div class="prepare-card">
-
-<h2>Información del vehículo</h2>
-
-<div class="info-row">
-    <span>VIN</span>
-    <strong id="vinInfo">—</strong>
-</div>
-
-<div class="info-row">
-    <span>Condición</span>
-    <strong id="condition">Used</strong>
-</div>
-
-<div class="info-row">
-    <span>Stock</span>
-    <strong id="stock">—</strong>
-</div>
-
-</div>
+<!-- ========================================= -->
+<!-- FOTOS DEL VEHÍCULO - ARRIBA -->
+<!-- ========================================= -->
 
 <div class="prepare-card">
 
     <div class="gallery-head">
+
         <h2>Fotos del vehículo</h2>
-        <span class="photo-count" id="photoCount">0 fotos</span>
+
+        <span
+            class="photo-count"
+            id="photoCount"
+        >
+            0 fotos
+        </span>
+
     </div>
 
-    <div class="main-photo-wrap" id="mainPhotoWrap">
-        <span class="no-photo">Sin fotos disponibles</span>
+
+    <div
+        class="main-photo-wrap"
+        id="mainPhotoWrap"
+    >
+
+        <span class="no-photo">
+            Sin fotos disponibles
+        </span>
+
     </div>
 
-    <div class="thumbnails" id="thumbnails"></div>
+
+    <div
+        class="thumbnails"
+        id="thumbnails"
+    ></div>
+
+</div>
+
+
+<!-- ========================================= -->
+<!-- INFORMACIÓN + PUBLICACIÓN -->
+<!-- ========================================= -->
+
+<div class="prepare-grid">
+
+
+<div>
+
+
+<div class="prepare-card">
+
+<div
+    class="vehicle-title"
+    id="vehicleName"
+></div>
+
+<div
+    class="vehicle-vin"
+    id="vehicleVin"
+></div>
+
+
+<div class="info-row">
+
+    <span>Millaje</span>
+
+    <strong id="mileage">
+        —
+    </strong>
+
+</div>
+
+
+<div class="info-row">
+
+    <span>Your Price</span>
+
+    <strong id="yourPrice">
+        —
+    </strong>
+
+</div>
+
+
+<div class="info-row">
+
+    <span>
+        Precio Marketplace
+    </span>
+
+    <strong
+        class="market-price"
+        id="marketPrice"
+    >
+        —
+    </strong>
+
+</div>
+
+
+<div class="info-row">
+
+    <span>Estado</span>
+
+    <strong>
+
+        <span
+            class="status"
+            id="status"
+        >
+            pending
+        </span>
+
+    </strong>
 
 </div>
 
 </div>
+
+
+<div class="prepare-card">
+
+<h2>
+    Información del vehículo
+</h2>
+
+
+<div class="info-row">
+
+    <span>VIN</span>
+
+    <strong id="vinInfo">
+        —
+    </strong>
+
+</div>
+
+
+<div class="info-row">
+
+    <span>Condición</span>
+
+    <strong id="condition">
+        Used
+    </strong>
+
+</div>
+
+
+<div class="info-row">
+
+    <span>Stock</span>
+
+    <strong id="stock">
+        —
+    </strong>
+
+</div>
+
+</div>
+
+</div>
+
+
+<!-- PUBLICACIÓN -->
+
 
 <div>
 
 <div class="prepare-card">
 
-<h2>Publicación de Marketplace</h2>
+<h2>
+    Publicación de Marketplace
+</h2>
+
 
 <div class="field">
-    <label>TÍTULO</label>
-    <input id="listingTitle">
+
+<label>
+    TÍTULO
+</label>
+
+<input id="listingTitle">
+
 </div>
 
-<div class="field">
-    <label>PRECIO</label>
-    <input id="listingPrice">
-</div>
 
 <div class="field">
-    <label>DESCRIPCIÓN</label>
-    <textarea id="description"></textarea>
+
+<label>
+    PRECIO
+</label>
+
+<input id="listingPrice">
+
 </div>
+
+
+<div class="field">
+
+<label>
+    DESCRIPCIÓN
+</label>
+
+<textarea id="description"></textarea>
+
+</div>
+
 
 <div class="action-row">
 
-    <button onclick="generateDescription()">
-        Generar descripción
-    </button>
+<button onclick="generateDescription()">
+    Generar descripción
+</button>
 
-    <button class="secondary" onclick="copyListing()">
-        Copiar publicación
-    </button>
+<button
+    class="secondary"
+    onclick="copyListing()"
+>
+    Copiar publicación
+</button>
+
+</div>
 
 </div>
 
 </div>
 
+
 </div>
 
 </div>
-</div>
+
 </div>
 
 </section>
+
 </main>
+
 
 <script>
 
@@ -377,206 +512,372 @@ const money = x =>
         }
     ).format(x || 0);
 
+
 const vin = decodeURIComponent(
-    window.location.pathname.split("/").pop()
+    window.location.pathname
+        .split("/")
+        .pop()
 );
 
+
 let vehicle = null;
+
 let photos = [];
+
+
+/* =========================================
+   GALERÍA
+========================================= */
 
 function renderPhotos(){
 
     const count =
-        document.getElementById("photoCount");
+        document.getElementById(
+            "photoCount"
+        );
 
     const mainWrap =
-        document.getElementById("mainPhotoWrap");
+        document.getElementById(
+            "mainPhotoWrap"
+        );
 
     const thumbs =
-        document.getElementById("thumbnails");
+        document.getElementById(
+            "thumbnails"
+        );
+
 
     count.textContent =
         photos.length +
-        (photos.length === 1 ? " foto" : " fotos");
+        (
+            photos.length === 1
+                ? " foto"
+                : " fotos"
+        );
+
 
     thumbs.innerHTML = "";
+
 
     if(!photos.length){
 
         mainWrap.innerHTML =
-            '<span class="no-photo">Sin fotos disponibles</span>';
+            '<span class="no-photo">' +
+            'Sin fotos disponibles' +
+            '</span>';
 
         return;
     }
 
+
     mainWrap.innerHTML = "";
+
 
     const main =
         document.createElement("img");
 
-    main.id = "mainPhoto";
-    main.className = "main-photo";
-    main.src = photos[0];
-    main.alt = vehicle?.vehicle || "Vehículo";
+
+    main.id =
+        "mainPhoto";
+
+    main.className =
+        "main-photo";
+
+    main.src =
+        photos[0];
+
+    main.alt =
+        vehicle?.vehicle ||
+        "Vehículo";
+
 
     mainWrap.appendChild(main);
 
-    photos.forEach((url,index)=>{
 
-        const img =
-            document.createElement("img");
+    photos.forEach(
+        (url,index)=>{
 
-        img.src = url;
-        img.alt = `Foto ${index + 1}`;
-        img.loading = "lazy";
-
-        img.className =
-            "thumb" +
-            (index === 0 ? " active" : "");
-
-        img.onclick = ()=>{
-
-            document.getElementById("mainPhoto").src =
-                url;
-
-            document
-                .querySelectorAll(".thumb")
-                .forEach(x =>
-                    x.classList.remove("active")
+            const img =
+                document.createElement(
+                    "img"
                 );
 
-            img.classList.add("active");
-        };
 
-        thumbs.appendChild(img);
+            img.src =
+                url;
 
-    });
+            img.alt =
+                `Foto ${index + 1}`;
+
+            img.loading =
+                "lazy";
+
+            img.className =
+                "thumb" +
+                (
+                    index === 0
+                        ? " active"
+                        : ""
+                );
+
+
+            img.onclick = ()=>{
+
+                document
+                    .getElementById(
+                        "mainPhoto"
+                    )
+                    .src = url;
+
+
+                document
+                    .querySelectorAll(
+                        ".thumb"
+                    )
+                    .forEach(
+                        x =>
+                            x.classList.remove(
+                                "active"
+                            )
+                    );
+
+
+                img.classList.add(
+                    "active"
+                );
+
+            };
+
+
+            thumbs.appendChild(
+                img
+            );
+
+        }
+    );
+
 }
+
+
+/* =========================================
+   CARGAR VEHÍCULO
+========================================= */
 
 async function loadVehicle(){
 
     try{
 
-        const response = await fetch(
-            "/api/vehicle/" +
-            encodeURIComponent(vin)
-        );
+        const response =
+            await fetch(
+                "/api/vehicle/" +
+                encodeURIComponent(
+                    vin
+                )
+            );
+
 
         const result =
             await response.json();
 
-        if(!response.ok || !result.ok){
+
+        if(
+            !response.ok ||
+            !result.ok
+        ){
 
             throw new Error(
                 result.error ||
                 "No se pudo cargar el vehículo"
             );
+
         }
 
-        vehicle = result.vehicle;
+
+        vehicle =
+            result.vehicle;
+
 
         photos =
-            Array.isArray(result.photos)
+            Array.isArray(
+                result.photos
+            )
                 ? result.photos
                 : [];
 
-        document.getElementById(
-            "vehicleName"
-        ).textContent =
-            vehicle.vehicle || "Vehículo";
 
-        document.getElementById(
-            "vehicleVin"
-        ).textContent =
-            "VIN: " + vehicle.vin;
+        document
+            .getElementById(
+                "vehicleName"
+            )
+            .textContent =
+                vehicle.vehicle ||
+                "Vehículo";
 
-        document.getElementById(
-            "vinInfo"
-        ).textContent =
-            vehicle.vin || "—";
 
-        document.getElementById(
-            "mileage"
-        ).textContent =
-            vehicle.mileage
-                ? Number(
-                    vehicle.mileage
-                  ).toLocaleString() + " mi"
-                : "—";
+        document
+            .getElementById(
+                "vehicleVin"
+            )
+            .textContent =
+                "VIN: " +
+                vehicle.vin;
 
-        document.getElementById(
-            "yourPrice"
-        ).textContent =
-            money(vehicle.your_price);
 
-        document.getElementById(
-            "marketPrice"
-        ).textContent =
-            money(vehicle.marketplace_price);
+        document
+            .getElementById(
+                "vinInfo"
+            )
+            .textContent =
+                vehicle.vin ||
+                "—";
 
-        document.getElementById(
-            "condition"
-        ).textContent =
-            vehicle.condition || "Used";
 
-        document.getElementById(
-            "status"
-        ).textContent =
-            vehicle.status || "pending";
+        document
+            .getElementById(
+                "mileage"
+            )
+            .textContent =
+                vehicle.mileage
+                    ? Number(
+                        vehicle.mileage
+                      ).toLocaleString()
+                      + " mi"
+                    : "—";
 
-        document.getElementById(
-            "stock"
-        ).textContent =
-            vehicle.stock || "—";
 
-        document.getElementById(
-            "listingTitle"
-        ).value =
-            vehicle.vehicle || "";
+        document
+            .getElementById(
+                "yourPrice"
+            )
+            .textContent =
+                money(
+                    vehicle.your_price
+                );
 
-        document.getElementById(
-            "listingPrice"
-        ).value =
-            vehicle.marketplace_price || "";
+
+        document
+            .getElementById(
+                "marketPrice"
+            )
+            .textContent =
+                money(
+                    vehicle.marketplace_price
+                );
+
+
+        document
+            .getElementById(
+                "condition"
+            )
+            .textContent =
+                vehicle.condition ||
+                "Used";
+
+
+        document
+            .getElementById(
+                "status"
+            )
+            .textContent =
+                vehicle.status ||
+                "pending";
+
+
+        document
+            .getElementById(
+                "stock"
+            )
+            .textContent =
+                vehicle.stock ||
+                "—";
+
+
+        document
+            .getElementById(
+                "listingTitle"
+            )
+            .value =
+                vehicle.vehicle ||
+                "";
+
+
+        document
+            .getElementById(
+                "listingPrice"
+            )
+            .value =
+                vehicle.marketplace_price ||
+                "";
+
 
         generateDescription();
+
         renderPhotos();
 
-        document.getElementById(
-            "loading"
-        ).style.display = "none";
 
-        document.getElementById(
-            "vehicleContent"
-        ).style.display = "block";
+        document
+            .getElementById(
+                "loading"
+            )
+            .style.display =
+                "none";
+
+
+        document
+            .getElementById(
+                "vehicleContent"
+            )
+            .style.display =
+                "block";
+
 
     }catch(error){
 
-        document.getElementById(
-            "loading"
-        ).innerHTML =
-            "<strong>Error:</strong> " +
-            error.message;
+        document
+            .getElementById(
+                "loading"
+            )
+            .innerHTML =
+                "<strong>Error:</strong> " +
+                error.message;
+
     }
+
 }
+
+
+/* =========================================
+   DESCRIPCIÓN
+========================================= */
 
 function generateDescription(){
 
-    if(!vehicle) return;
+    if(!vehicle){
+        return;
+    }
+
 
     const name =
-        vehicle.vehicle || "Used Vehicle";
+        vehicle.vehicle ||
+        "Used Vehicle";
+
 
     const mileage =
         vehicle.mileage
+
             ? Number(
                 vehicle.mileage
-              ).toLocaleString() + " miles"
+              ).toLocaleString()
+              + " miles"
+
             : "";
 
-    document.getElementById(
-        "description"
-    ).value =
+
+    document
+        .getElementById(
+            "description"
+        )
+        .value =
 `${name}
 
 ${mileage ? "Mileage: " + mileage + "\n" : ""}VIN: ${vehicle.vin}
@@ -588,22 +889,36 @@ Send me a message for more information, financing options, or to schedule a test
 
 }
 
+
+/* =========================================
+   COPIAR PUBLICACIÓN
+========================================= */
+
 async function copyListing(){
 
     const title =
-        document.getElementById(
-            "listingTitle"
-        ).value;
+        document
+            .getElementById(
+                "listingTitle"
+            )
+            .value;
+
 
     const price =
-        document.getElementById(
-            "listingPrice"
-        ).value;
+        document
+            .getElementById(
+                "listingPrice"
+            )
+            .value;
+
 
     const description =
-        document.getElementById(
-            "description"
-        ).value;
+        document
+            .getElementById(
+                "description"
+            )
+            .value;
+
 
     const text =
 `${title}
@@ -612,11 +927,20 @@ Price: ${money(Number(price))}
 
 ${description}`;
 
+
     try{
 
-        await navigator.clipboard.writeText(text);
+        await navigator
+            .clipboard
+            .writeText(
+                text
+            );
 
-        alert("Publicación copiada.");
+
+        alert(
+            "Publicación copiada."
+        );
+
 
     }catch(e){
 
@@ -625,7 +949,9 @@ ${description}`;
         );
 
     }
+
 }
+
 
 loadVehicle();
 
