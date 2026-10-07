@@ -11,6 +11,7 @@ from fastapi.templating import Jinja2Templates
 from bs4 import BeautifulSoup
 from openpyxl import load_workbook
 from io import BytesIO
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import psycopg
 from psycopg.rows import dict_row
@@ -88,6 +89,17 @@ def init_db():
             # Migraciones seguras para bases de datos existentes.
             cur.execute("ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS stock TEXT")
             cur.execute("ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS pic_count INTEGER DEFAULT 0")
+
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS vehicle_photos (
+                    vin TEXT NOT NULL,
+                    position INTEGER NOT NULL,
+                    url TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    PRIMARY KEY (vin, position)
+                )
+            """)
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_vehicle_photos_vin ON vehicle_photos(vin)")
 
             # Migración de una sola vez:
             # borra los totales que anteriormente se importaron desde VINCUE.
@@ -630,6 +642,61 @@ def sync():
 
 
 # ============================================================
+# AUTO.DEV - FOTOS POR VIN
+# ============================================================
+
+def fetch_auto_dev_photos(vin: str):
+    if not AUTO_DEV_API_KEY:
+        return []
+    try:
+        r = requests.get(
+            f"https://api.auto.dev/photos/{vin}",
+            headers={"Authorization": f"Bearer {AUTO_DEV_API_KEY}", "Accept": "application/json"},
+            timeout=15,
+        )
+        r.raise_for_status()
+        retail = (r.json().get("data") or {}).get("retail") or []
+        photos, seen = [], set()
+        for url in retail:
+            if isinstance(url, str) and url.startswith(("http://", "https://")) and url not in seen:
+                seen.add(url)
+                photos.append(url)
+        return photos
+    except Exception:
+        return []
+
+def fetch_photos_for_vins(vins, max_workers=8):
+    results = {}
+    vins = list(dict.fromkeys(vins))
+    if not AUTO_DEV_API_KEY:
+        return results
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        jobs = {executor.submit(fetch_auto_dev_photos, vin): vin for vin in vins}
+        for job in as_completed(jobs):
+            vin = jobs[job]
+            try:
+                results[vin] = job.result()
+            except Exception:
+                results[vin] = []
+    return results
+
+def save_vehicle_photos(cur, vin, photos, now):
+    if not photos:
+        return 0
+    cur.execute("DELETE FROM vehicle_photos WHERE vin = %s", (vin,))
+    for position, url in enumerate(photos, 1):
+        cur.execute(
+            """INSERT INTO vehicle_photos (vin, position, url, updated_at)
+               VALUES (%s,%s,%s,%s)
+               ON CONFLICT (vin, position)
+               DO UPDATE SET url=EXCLUDED.url, updated_at=EXCLUDED.updated_at""",
+            (vin, position, url, now),
+        )
+    cur.execute("UPDATE vehicles SET photo=%s, updated_at=%s WHERE vin=%s", (photos[0], now, vin))
+    return len(photos)
+
+
+# ============================================================
 # FOTOS VINCUE
 # ============================================================
 
@@ -865,6 +932,47 @@ def test_auto_dev_photos(vin: str):
 
 
 # ============================================================
+# SINCRONIZAR FOTOS AUTO.DEV
+# ============================================================
+
+@app.post("/api/sync-photos")
+def sync_auto_dev_photos():
+    if not AUTO_DEV_API_KEY:
+        return JSONResponse({"ok": False, "error": "AUTO_DEV_API_KEY no está configurado"}, status_code=500)
+
+    with db() as c:
+        with c.cursor() as cur:
+            cur.execute("SELECT vin FROM vehicles WHERE status != 'unavailable' ORDER BY vin")
+            vins = [row["vin"] for row in cur.fetchall()]
+
+    results = fetch_photos_for_vins(vins)
+    now = datetime.now(timezone.utc).isoformat()
+    total_photos = 0
+    with_photos = 0
+    missing = []
+
+    with db() as c:
+        with c.cursor() as cur:
+            for vin in vins:
+                photos = results.get(vin, [])
+                if photos:
+                    total_photos += save_vehicle_photos(cur, vin, photos, now)
+                    with_photos += 1
+                else:
+                    missing.append(vin)
+        c.commit()
+
+    return {
+        "ok": True,
+        "vehicles_checked": len(vins),
+        "vehicles_with_photos": with_photos,
+        "total_photos": total_photos,
+        "vehicles_without_photos": len(missing),
+        "missing_vins": missing
+    }
+
+
+# ============================================================
 # PUBLICACIONES
 # ============================================================
 
@@ -917,9 +1025,16 @@ def vehicle_detail(vin: str):
         )
 
 
+    with db() as c:
+        with c.cursor() as cur:
+            cur.execute("SELECT url FROM vehicle_photos WHERE vin=%s ORDER BY position", (vin,))
+            photos = [item["url"] for item in cur.fetchall()]
+
     return {
         "ok": True,
-        "vehicle": row
+        "vehicle": row,
+        "photos": photos,
+        "photo_count": len(photos)
     }
 
 
