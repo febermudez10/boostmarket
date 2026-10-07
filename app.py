@@ -935,7 +935,7 @@ def test_auto_dev_photos(vin: str):
 # SINCRONIZAR FOTOS AUTO.DEV
 # ============================================================
 
-@app.post("/api/sync-photos")
+@app.get("/api/sync-photos")
 def sync_auto_dev_photos():
     if not AUTO_DEV_API_KEY:
         return JSONResponse({"ok": False, "error": "AUTO_DEV_API_KEY no está configurado"}, status_code=500)
