@@ -107,6 +107,7 @@
     display:flex;
     gap:10px;
     margin-top:18px;
+    flex-wrap:wrap;
 }
 
 .secondary{
@@ -387,6 +388,30 @@
                             Copiar publicación
                         </button>
                     </div>
+
+                    <!-- NUEVOS BOTONES MARKETPLACE -->
+                    <div class="action-row">
+                        <button type="button" onclick="openMarketplace()">
+                            Abrir Facebook Marketplace
+                        </button>
+
+                        <button
+                            type="button"
+                            class="secondary"
+                            id="downloadPhotosButton"
+                            onclick="downloadPhotos()"
+                            disabled
+                        >
+                            Descargar fotos
+                        </button>
+                    </div>
+
+                    <p id="photoDownloadNote"
+                       style="color:#697586;font-size:12px;margin-top:10px;">
+                        Las fotos se descargarán individualmente.
+                        Confirma la publicación en Facebook antes de
+                        marcarla como publicada.
+                    </p>
                 </div>
             </div>
 
@@ -457,8 +482,6 @@ async function verifyPhotos(urls) {
 
     const validPhotos = [];
 
-    // Comprobamos las imágenes en grupos pequeños.
-    // Así evitamos solicitar demasiadas a la vez.
     for (let i = 0; i < uniqueUrls.length; i += 5) {
         const group = uniqueUrls.slice(i, i + 5);
 
@@ -487,6 +510,9 @@ function renderPhotos() {
 
     thumbs.innerHTML = "";
     mainWrap.innerHTML = "";
+
+    document.getElementById("downloadPhotosButton").disabled =
+        photos.length === 0;
 
     if (photos.length === 0) {
         layout.classList.add("single-photo");
@@ -671,6 +697,85 @@ async function copyListing() {
         alert("Publicación copiada.");
     } catch(error) {
         alert("No se pudo copiar la publicación.");
+    }
+}
+
+/* ABRIR FACEBOOK MARKETPLACE */
+
+function openMarketplace() {
+    window.open(
+        "https://www.facebook.com/marketplace/create/vehicle",
+        "_blank",
+        "noopener,noreferrer"
+    );
+}
+
+/* DESCARGAR FOTOGRAFÍAS */
+
+async function downloadPhotos() {
+    if (!photos.length) {
+        alert("Este vehículo no tiene fotos disponibles para descargar.");
+        return;
+    }
+
+    const button = document.getElementById("downloadPhotosButton");
+    button.disabled = true;
+
+    const originalLabel = button.textContent;
+    button.textContent = "Preparando fotos...";
+
+    let downloaded = 0;
+    let failed = 0;
+
+    try {
+        for (let i = 0; i < photos.length; i++) {
+            try {
+                const response = await fetch(photos[i]);
+
+                if (!response.ok) {
+                    throw new Error("No se pudo obtener la foto");
+                }
+
+                const blob = await response.blob();
+                const objectUrl = URL.createObjectURL(blob);
+
+                const anchor = document.createElement("a");
+                anchor.href = objectUrl;
+                anchor.download =
+                    (vehicle.vin || "vehiculo") +
+                    "-foto-" + (i + 1) + ".jpg";
+
+                document.body.appendChild(anchor);
+                anchor.click();
+                anchor.remove();
+
+                setTimeout(() => {
+                    URL.revokeObjectURL(objectUrl);
+                }, 60000);
+
+                downloaded++;
+
+            } catch(error) {
+                failed++;
+            }
+        }
+
+        if (failed) {
+            alert(
+                downloaded + " foto(s) descargadas. " +
+                failed + " no se pudieron descargar automáticamente. " +
+                "Puedes abrir la imagen de la galería y guardarla manualmente."
+            );
+        } else {
+            alert(
+                downloaded + " foto(s) preparadas. " +
+                "Si Chrome bloqueó descargas múltiples, autorízalas para este sitio."
+            );
+        }
+
+    } finally {
+        button.disabled = photos.length === 0;
+        button.textContent = originalLabel;
     }
 }
 
