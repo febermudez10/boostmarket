@@ -33,17 +33,31 @@ HEADERS = {
     "User-Agent": "South-Dade-Toyota-Inventory-Manager/1.0"
 }
 
-SOURCE = "https://www.southdadetoyota.com/llm/inventory/?type=used"
+SOURCE = (
+    "https://www.southdadetoyota.com/"
+    "llm/inventory/?type=used"
+)
 
-DEALER_FEE = 899
-ELECTRONIC_FILING_FEE = 595
+# ============================================================
+# PRECIO MARKETPLACE - FORMULA ORIGINAL
+# ============================================================
+#
+# Precio Marketplace = Precio VINCUE + $1,000
+#
+# NO se agregan:
+# - Dealer Fee de $899
+# - Electronic Filing Fee de $595
+#
+# ============================================================
+
 MARKETPLACE_MARGIN = 1000
 
-TOTAL_MARKETPLACE_ADDITION = (
-    DEALER_FEE
-    + ELECTRONIC_FILING_FEE
-    + MARKETPLACE_MARGIN
-)
+
+def marketplace_price_from_vincue(price):
+    if price is None or price <= 0:
+        return 0
+
+    return price + MARKETPLACE_MARGIN
 
 
 # ============================================================
@@ -82,8 +96,8 @@ def db():
 
 
 def init_db():
-    with db() as c:
-        with c.cursor() as cur:
+    with db() as connection:
+        with connection.cursor() as cur:
 
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS vehicles (
@@ -138,32 +152,10 @@ def init_db():
                 )
             """)
 
-            cur.execute("""
-                SELECT 1
-                FROM app_migrations
-                WHERE migration_key = %s
-            """, ("reset_vincue_leads_v1",))
+            # No reiniciar ni borrar los leads existentes.
+            # Las migraciones anteriores permanecen guardadas.
 
-            if not cur.fetchone():
-                cur.execute("""
-                    UPDATE vehicles
-                    SET lead_count = 0
-                """)
-
-                cur.execute("""
-                    INSERT INTO app_migrations (
-                        migration_key,
-                        applied_at
-                    )
-                    VALUES (%s, %s)
-                """, (
-                    "reset_vincue_leads_v1",
-                    datetime.now(
-                        timezone.utc
-                    ).isoformat()
-                ))
-
-        c.commit()
+        connection.commit()
 
 
 # ============================================================
@@ -188,19 +180,6 @@ def money(value):
         )
     except ValueError:
         return None
-
-
-def marketplace_price_from_vincue(price):
-    """
-    Precio de publicación:
-    VINCUE + $899 + $595 + $1,000.
-
-    No incluye impuestos ni registro.
-    """
-    if price is None or price <= 0:
-        return 0
-
-    return price + TOTAL_MARKETPLACE_ADDITION
 
 
 def normalize_vincue_photo_url(value):
@@ -358,9 +337,11 @@ def get_primary_photo(detail_url):
 # ============================================================
 # WEBSITE COLLECTOR - LEGACY
 # ============================================================
+#
 # Conservado por compatibilidad.
 # No se ejecuta desde /api/sync.
-# El inventario oficial de BoostMarket sigue siendo VINCUE.
+# El inventario oficial sigue siendo VINCUE.
+#
 # ============================================================
 
 def collect():
@@ -477,8 +458,8 @@ def collect():
         timezone.utc
     ).isoformat()
 
-    with db() as c:
-        with c.cursor() as cur:
+    with db() as connection:
+        with connection.cursor() as cur:
 
             for vehicle in found.values():
                 cur.execute("""
@@ -565,7 +546,7 @@ def collect():
                     list(found.keys())
                 ))
 
-        c.commit()
+        connection.commit()
 
     return len(found)
 
@@ -600,8 +581,8 @@ def home(request: Request):
 
 @app.get("/api/inventory")
 def inventory():
-    with db() as c:
-        with c.cursor() as cur:
+    with db() as connection:
+        with connection.cursor() as cur:
             cur.execute("""
                 SELECT *
                 FROM vehicles
@@ -617,8 +598,8 @@ def inventory():
 
 @app.get("/api/summary")
 def summary():
-    with db() as c:
-        with c.cursor() as cur:
+    with db() as connection:
+        with connection.cursor() as cur:
 
             cur.execute("""
                 SELECT COUNT(*) AS n
@@ -680,13 +661,11 @@ def summary():
 def sync():
     """
     No modifica el inventario.
-
-    El website bloquea consultas automáticas desde Render.
     VINCUE sigue siendo la fuente de inventario.
     """
     try:
-        with db() as c:
-            with c.cursor() as cur:
+        with db() as connection:
+            with connection.cursor() as cur:
                 cur.execute("""
                     SELECT COUNT(*) AS n
                     FROM vehicles
@@ -860,16 +839,8 @@ async def import_vincue(
     """
     Importa vehículos usados desde VINCUE.
 
-    Precio Marketplace:
-        Precio VINCUE
-        + $899 Dealer Fee
-        + $595 Electronic Filing Fee
-        + $1,000 Marketplace
-
-    TOTAL:
-        Precio VINCUE + $2,494
-
-    No incluye impuestos ni registro.
+    PRECIO MARKETPLACE:
+        Precio VINCUE + $1,000
 
     Conserva leads, estados y fotografías.
     """
@@ -957,8 +928,8 @@ async def import_vincue(
             timezone.utc
         ).isoformat()
 
-        with db() as c:
-            with c.cursor() as cur:
+        with db() as connection:
+            with connection.cursor() as cur:
 
                 for cells in sheet.iter_rows(
                     min_row=2,
@@ -1010,16 +981,14 @@ async def import_vincue(
                         price = 0
 
                     # ========================================
-                    # NUEVA FORMULA DE PRECIO
+                    # PRECIO ORIGINAL DE BOOSTMARKET
                     # ========================================
                     #
-                    # VINCUE + $2,494
+                    # PRECIO VINCUE + $1,000
                     #
-                    # $899 Dealer Fee
-                    # $595 Electronic Filing Fee
-                    # $1,000 Margen Marketplace
+                    # No agregar Dealer Fee.
+                    # No agregar Electronic Filing Fee.
                     #
-                    # No incluye impuestos ni registro.
                     # ========================================
 
                     marketplace_price = (
@@ -1135,6 +1104,8 @@ async def import_vincue(
                     imported += 1
                     imported_vins.append(vin)
 
+                # Actualizar disponibilidad solamente
+                # cuando hay vehículos importados.
                 if imported_vins:
                     cur.execute("""
                         UPDATE vehicles
@@ -1147,15 +1118,13 @@ async def import_vincue(
                         imported_vins
                     ))
 
-            c.commit()
+            connection.commit()
 
         return {
             "ok": True,
             "count": imported,
             "source": "VINCUE",
-            "marketplace_addition": (
-                TOTAL_MARKETPLACE_ADDITION
-            ),
+            "marketplace_addition": MARKETPLACE_MARGIN,
             "message": (
                 f"{imported} vehículos "
                 "importados desde VINCUE"
@@ -1291,7 +1260,7 @@ def test_website_price(vin: str):
             "message": (
                 "El website rechazó la consulta. "
                 "Se mantiene el cálculo "
-                "VINCUE + $2,494."
+                "VINCUE + $1,000."
             )
         }
 
@@ -1301,7 +1270,7 @@ def test_website_price(vin: str):
             "vin": vin,
             "message": (
                 "No se pudo consultar el website. "
-                "Se mantiene VINCUE + $2,494."
+                "Se mantiene VINCUE + $1,000."
             ),
             "detail": str(exc)
         }
@@ -1430,8 +1399,8 @@ def sync_auto_dev_photos():
             status_code=500
         )
 
-    with db() as c:
-        with c.cursor() as cur:
+    with db() as connection:
+        with connection.cursor() as cur:
             cur.execute("""
                 SELECT vin
                 FROM vehicles
@@ -1456,8 +1425,8 @@ def sync_auto_dev_photos():
     with_photos = 0
     missing = []
 
-    with db() as c:
-        with c.cursor() as cur:
+    with db() as connection:
+        with connection.cursor() as cur:
 
             for vin in vins:
                 photos = results.get(
@@ -1477,7 +1446,7 @@ def sync_auto_dev_photos():
                 else:
                     missing.append(vin)
 
-        c.commit()
+        connection.commit()
 
     return {
         "ok": True,
@@ -1505,7 +1474,7 @@ def publicaciones(request: Request):
 
 
 # ============================================================
-# PHOTO PROXY
+# PHOTO PROXY - AUTO.DEV
 # ============================================================
 
 @app.get("/api/photo/{vin}/{position}")
@@ -1528,8 +1497,8 @@ def vehicle_photo(
             status_code=404
         )
 
-    with db() as c:
-        with c.cursor() as cur:
+    with db() as connection:
+        with connection.cursor() as cur:
             cur.execute("""
                 SELECT url
                 FROM vehicle_photos
@@ -1606,8 +1575,8 @@ def vehicle_photo(
 def vehicle_detail(vin: str):
     vin = (vin or "").strip().upper()
 
-    with db() as c:
-        with c.cursor() as cur:
+    with db() as connection:
+        with connection.cursor() as cur:
             cur.execute("""
                 SELECT *
                 FROM vehicles
@@ -1625,8 +1594,8 @@ def vehicle_detail(vin: str):
             status_code=404
         )
 
-    with db() as c:
-        with c.cursor() as cur:
+    with db() as connection:
+        with connection.cursor() as cur:
             cur.execute("""
                 SELECT position
                 FROM vehicle_photos
