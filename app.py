@@ -14,7 +14,8 @@ from psycopg.rows import dict_row
 from bs4 import BeautifulSoup
 from openpyxl import load_workbook
 
-from fastapi import FastAPI, Request, UploadFile, File
+from fastapi import FastAPI, Request, UploadFile, File, HTTPException
+from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
@@ -127,6 +128,22 @@ def init_db():
                 ALTER TABLE vehicles
                 ADD COLUMN IF NOT EXISTS pic_count
                 INTEGER DEFAULT 0
+            """)
+
+            # Separar disponibilidad de estado de publicación.
+            cur.execute("""
+                ALTER TABLE vehicles
+                ADD COLUMN IF NOT EXISTS is_available BOOLEAN DEFAULT TRUE
+            """)
+            cur.execute("""
+                ALTER TABLE vehicles
+                ADD COLUMN IF NOT EXISTS published_at TEXT
+            """)
+            # Migración compatible con el estado antiguo unavailable.
+            cur.execute("""
+                UPDATE vehicles
+                SET is_available = FALSE, status = 'pending'
+                WHERE status = 'unavailable'
             """)
 
             cur.execute("""
@@ -517,6 +534,7 @@ def collect():
                         marketplace_price = EXCLUDED.marketplace_price,
                         url = EXCLUDED.url,
                         photo = EXCLUDED.photo,
+                        is_available = TRUE,
                         last_seen = EXCLUDED.last_seen,
                         updated_at = EXCLUDED.updated_at
                 """, (
@@ -538,7 +556,7 @@ def collect():
                 cur.execute("""
                     UPDATE vehicles
                     SET
-                        status = 'unavailable',
+                        is_available = FALSE,
                         updated_at = %s
                     WHERE NOT (vin = ANY(%s))
                 """, (
@@ -604,7 +622,7 @@ def summary():
             cur.execute("""
                 SELECT COUNT(*) AS n
                 FROM vehicles
-                WHERE status != 'unavailable'
+                WHERE is_available = TRUE
             """)
 
             total = cur.fetchone()["n"]
@@ -612,7 +630,7 @@ def summary():
             cur.execute("""
                 SELECT COUNT(*) AS n
                 FROM vehicles
-                WHERE status = 'published'
+                WHERE status = 'published' AND is_available = TRUE
             """)
 
             published = cur.fetchone()["n"]
@@ -620,7 +638,7 @@ def summary():
             cur.execute("""
                 SELECT COUNT(*) AS n
                 FROM vehicles
-                WHERE status = 'pending'
+                WHERE status = 'pending' AND is_available = TRUE
             """)
 
             pending = cur.fetchone()["n"]
@@ -628,7 +646,7 @@ def summary():
             cur.execute("""
                 SELECT COUNT(*) AS n
                 FROM vehicles
-                WHERE status = 'error'
+                WHERE status = 'error' AND is_available = TRUE
             """)
 
             errors = cur.fetchone()["n"]
@@ -669,7 +687,7 @@ def sync():
                 cur.execute("""
                     SELECT COUNT(*) AS n
                     FROM vehicles
-                    WHERE status != 'unavailable'
+                    WHERE is_available = TRUE
                 """)
 
                 count = cur.fetchone()["n"]
@@ -1035,7 +1053,6 @@ async def import_vincue(
                     status = (
                         old["status"]
                         if old
-                        and old["status"] != "unavailable"
                         else "pending"
                     )
 
@@ -1075,7 +1092,7 @@ async def import_vincue(
                             marketplace_price = EXCLUDED.marketplace_price,
                             stock = EXCLUDED.stock,
                             pic_count = EXCLUDED.pic_count,
-                            status = EXCLUDED.status,
+                            is_available = TRUE,
                             photo = CASE
                                 WHEN EXCLUDED.photo IS NOT NULL
                                 AND EXCLUDED.photo <> ''
@@ -1110,7 +1127,7 @@ async def import_vincue(
                     cur.execute("""
                         UPDATE vehicles
                         SET
-                            status = 'unavailable',
+                            is_available = FALSE,
                             updated_at = %s
                         WHERE NOT (vin = ANY(%s))
                     """, (
@@ -1404,7 +1421,7 @@ def sync_auto_dev_photos():
             cur.execute("""
                 SELECT vin
                 FROM vehicles
-                WHERE status != 'unavailable'
+                WHERE is_available = TRUE
                 ORDER BY vin
             """)
 
@@ -1456,6 +1473,49 @@ def sync_auto_dev_photos():
         "vehicles_without_photos": len(missing),
         "missing_vins": missing
     }
+
+
+# ============================================================
+# PUBLICATION STATUS - MANUAL CONFIRMATION
+# ============================================================
+
+class PublicationStatusUpdate(BaseModel):
+    status: str
+
+
+@app.post("/api/publication-status/{vin}")
+def update_publication_status(vin: str, payload: PublicationStatusUpdate):
+    vin = (vin or "").strip().upper()
+    if not re.fullmatch(r"[A-HJ-NPR-Z0-9]{17}", vin):
+        raise HTTPException(status_code=400, detail="VIN inválido")
+
+    if payload.status not in ("pending", "published"):
+        raise HTTPException(status_code=400, detail="Estado no permitido")
+
+    now = datetime.now(timezone.utc).isoformat()
+    with db() as connection:
+        with connection.cursor() as cur:
+            cur.execute("""
+                UPDATE vehicles
+                SET status = %s,
+                    published_at = CASE
+                        WHEN %s = 'published' THEN COALESCE(published_at, %s)
+                        ELSE NULL
+                    END,
+                    updated_at = %s
+                WHERE vin = %s AND is_available = TRUE
+                RETURNING vin, status, published_at
+            """, (payload.status, payload.status, now, now, vin))
+            updated = cur.fetchone()
+        connection.commit()
+
+    if not updated:
+        raise HTTPException(
+            status_code=404,
+            detail="Vehículo no encontrado o retirado del inventario"
+        )
+
+    return {"ok": True, **updated}
 
 
 # ============================================================
