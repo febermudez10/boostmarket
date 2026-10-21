@@ -78,6 +78,16 @@
             color: #92400e;
         }
 
+        .state-label.to-remove {
+            background: #fee4e2;
+            color: #b42318;
+        }
+
+        .state-label.removed {
+            background: #e0f2fe;
+            color: #075985;
+        }
+
         .state-label.unavailable {
             background: #f2f4f7;
             color: #667085;
@@ -149,6 +159,11 @@
                 <span>ERRORES</span>
                 <b id="errors">0</b>
             </div>
+
+            <div>
+                <span>POR RETIRAR DE MARKETPLACE</span>
+                <b id="to_remove">0</b>
+            </div>
         </div>
 
         <section class="panel">
@@ -167,7 +182,9 @@
                         <option value="pending">Pendientes</option>
                         <option value="published">Publicados</option>
                         <option value="error">Error</option>
-                        <option value="unavailable">Retirados</option>
+                        <option value="to-remove">Por retirar de Marketplace</option>
+                        <option value="removed">Retiro confirmado</option>
+                        <option value="unavailable">No disponibles (todos)</option>
                     </select>
                 </div>
             </div>
@@ -260,6 +277,9 @@ function vehiclePhoto(v) {
 function displayStatus(v) {
 
     if (v.is_available === false) {
+        if (v.status === "published") {
+            return v.marketplace_removed_at ? "removed" : "to-remove";
+        }
         return "unavailable";
     }
 
@@ -281,7 +301,7 @@ function render() {
 
         const matchesStatus = filter
             ? status === filter
-            : status !== "unavailable";
+            : v.is_available !== false;
 
         const text = `${v.vehicle} ${v.vin}`
             .toLowerCase();
@@ -297,7 +317,9 @@ function render() {
             published: "Publicado",
             pending: "Pendiente",
             error: "Error",
-            unavailable: "Retirado"
+            unavailable: "No disponible",
+            "to-remove": "Por retirar",
+            removed: "Retiro confirmado"
         };
 
         const name = names[status] || status;
@@ -308,7 +330,16 @@ function render() {
 
         let action = "";
 
-        if (status === "published") {
+        if (status === "to-remove") {
+            action = `
+                <button
+                    data-action="confirm-removal"
+                    data-vin="${esc(v.vin)}"
+                >
+                    Confirmar retiro
+                </button>
+            `;
+        } else if (status === "published") {
             action = `
                 <button
                     data-action="pending"
@@ -317,7 +348,7 @@ function render() {
                     Marcar como pendiente
                 </button>
             `;
-        } else if (status !== "unavailable") {
+        } else if (v.is_available !== false) {
             action = `
                 <button
                     data-action="published"
@@ -418,7 +449,8 @@ async function load() {
             "vehicles",
             "pending",
             "published",
-            "errors"
+            "errors",
+            "to_remove"
         ]) {
             $(key).textContent = summary[key] || 0;
         }
@@ -484,6 +516,48 @@ async function updateStatus(vin, status, button) {
 }
 
 
+async function confirmRemoval(vin, button) {
+
+    if (!confirm(
+        "¿Confirmas que ya retiraste este anuncio de Facebook Marketplace? " +
+        "Esta acción no elimina el anuncio automáticamente."
+    )) {
+        return;
+    }
+
+    button.disabled = true;
+    $("notice").textContent = "";
+
+    try {
+
+        const response = await fetch(
+            "/api/confirm-marketplace-removal/" +
+                encodeURIComponent(vin),
+            {
+                method: "POST"
+            }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+            throw new Error(
+                result.detail ||
+                result.error ||
+                "No se pudo confirmar el retiro"
+            );
+        }
+
+        await load();
+
+    } catch (error) {
+
+        $("notice").textContent = error.message;
+        button.disabled = false;
+    }
+}
+
+
 $("rows").addEventListener("click", event => {
 
     const button = event.target.closest(
@@ -502,6 +576,11 @@ $("rows").addEventListener("click", event => {
         window.location.href =
             "/preparar/" + encodeURIComponent(vin);
 
+        return;
+    }
+
+    if (action === "confirm-removal") {
+        confirmRemoval(vin, button);
         return;
     }
 
