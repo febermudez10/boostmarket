@@ -9,235 +9,280 @@
 <link rel="stylesheet" href="/static/app.css">
 
 <style>
-.prepare-container{
-    max-width:1180px;
-    margin:0 auto;
+.prepare-container {
+    max-width: 1180px;
+    margin: 0 auto;
 }
 
-.prepare-card{
-    background:#fff;
-    border:1px solid #e4e7ec;
-    border-radius:11px;
-    padding:18px;
-    margin-bottom:18px;
+.prepare-card {
+    background: #fff;
+    border: 1px solid #e4e7ec;
+    border-radius: 11px;
+    padding: 18px;
+    margin-bottom: 18px;
 }
 
-.prepare-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:18px;
+.prepare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
 }
 
-.prepare-card h2{
-    margin:0 0 16px;
-    font-size:18px;
+.prepare-card h2 {
+    margin: 0 0 16px;
+    font-size: 18px;
 }
 
-.vehicle-title{
-    font-size:23px;
-    font-weight:800;
-    margin-bottom:5px;
+.vehicle-title {
+    font-size: 23px;
+    font-weight: 800;
+    margin-bottom: 5px;
 }
 
-.vehicle-vin{
-    color:#697586;
-    font-size:13px;
-    margin-bottom:18px;
+.vehicle-vin {
+    color: #697586;
+    font-size: 13px;
+    margin-bottom: 18px;
 }
 
-.info-row{
-    display:flex;
-    justify-content:space-between;
-    gap:15px;
-    padding:10px 0;
-    border-bottom:1px solid #edf0f3;
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 10px 0;
+    border-bottom: 1px solid #edf0f3;
 }
 
-.info-row span{
-    color:#697586;
+.info-row span {
+    color: #697586;
 }
 
-.info-row strong{
-    text-align:right;
+.info-row strong {
+    text-align: right;
 }
 
-.market-price{
-    font-size:22px;
-    font-weight:800;
+.market-price {
+    font-size: 22px;
+    font-weight: 800;
 }
 
-.status{
-    padding:6px 10px;
-    border-radius:99px;
-    background:#fff4d7;
-    color:#8a5b00;
-    font-size:11px;
-    font-weight:700;
+.status {
+    padding: 6px 10px;
+    border-radius: 99px;
+    background: #fff4d7;
+    color: #8a5b00;
+    font-size: 11px;
+    font-weight: 700;
 }
 
-.field{
-    margin-bottom:15px;
+.status.published {
+    background: #dcfae6;
+    color: #067647;
 }
 
-.field label{
-    display:block;
-    font-size:12px;
-    font-weight:700;
-    margin-bottom:6px;
-    color:#475467;
+.status.unavailable {
+    background: #fee4e2;
+    color: #b42318;
+}
+
+.field {
+    margin-bottom: 15px;
+}
+
+.field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: #475467;
 }
 
 .field input,
-.field textarea{
-    width:100%;
-    box-sizing:border-box;
-    padding:11px;
-    border:1px solid #d4d9e0;
-    border-radius:7px;
-    font-family:inherit;
-    font-size:14px;
+.field textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px;
+    border: 1px solid #d4d9e0;
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 14px;
 }
 
-.field textarea{
-    min-height:175px;
-    resize:vertical;
+.field textarea {
+    min-height: 175px;
+    resize: vertical;
 }
 
-.action-row{
-    display:flex;
-    gap:10px;
-    margin-top:18px;
-    flex-wrap:wrap;
+.action-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+    flex-wrap: wrap;
 }
 
-.secondary{
-    background:#fff;
-    color:#111827;
-    border:1px solid #d4d9e0;
+.secondary {
+    background: #fff;
+    color: #111827;
+    border: 1px solid #d4d9e0;
 }
 
-.loading{
-    padding:40px;
-    text-align:center;
-    color:#697586;
+.published-button {
+    background: #067647;
+    color: #fff;
+    border: 1px solid #067647;
+}
+
+.published-button:disabled {
+    background: #dcfae6;
+    color: #067647;
+    border-color: #a6e9c0;
+    cursor: default;
+    opacity: 1;
+}
+
+.action-row button:disabled {
+    cursor: not-allowed;
+}
+
+.publication-notice {
+    margin-top: 12px;
+    font-size: 13px;
+    color: #475467;
+    line-height: 1.5;
+}
+
+.publication-notice.success {
+    color: #067647;
+    font-weight: 700;
+}
+
+.publication-notice.error {
+    color: #b42318;
+    font-weight: 700;
+}
+
+.loading {
+    padding: 40px;
+    text-align: center;
+    color: #697586;
 }
 
 /* GALERÍA COMPACTA */
 
-.gallery-head{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:12px;
-    margin-bottom:12px;
+.gallery-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
 }
 
-.gallery-head h2{
-    margin:0;
+.gallery-head h2 {
+    margin: 0;
 }
 
-.photo-count{
-    font-size:12px;
-    font-weight:700;
-    color:#475467;
-    background:#f2f4f7;
-    padding:6px 10px;
-    border-radius:99px;
+.photo-count {
+    font-size: 12px;
+    font-weight: 700;
+    color: #475467;
+    background: #f2f4f7;
+    padding: 6px 10px;
+    border-radius: 99px;
 }
 
-.gallery-layout{
-    display:grid;
-    grid-template-columns:46% minmax(0,1fr);
-    gap:12px;
-    height:290px;
+.gallery-layout {
+    display: grid;
+    grid-template-columns: 46% minmax(0, 1fr);
+    gap: 12px;
+    height: 290px;
 }
 
-.gallery-layout.single-photo{
-    grid-template-columns:1fr;
+.gallery-layout.single-photo {
+    grid-template-columns: 1fr;
 }
 
-.gallery-layout.single-photo .thumbnails{
-    display:none;
+.gallery-layout.single-photo .thumbnails {
+    display: none;
 }
 
-.main-photo-wrap{
-    background:#f2f4f7;
-    border:1px solid #e4e7ec;
-    border-radius:10px;
-    overflow:hidden;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    min-width:0;
+.main-photo-wrap {
+    background: #f2f4f7;
+    border: 1px solid #e4e7ec;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
 }
 
-.main-photo{
-    width:100%;
-    height:100%;
-    object-fit:contain;
-    display:block;
+.main-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
 }
 
-.no-photo{
-    color:#697586;
-    font-size:14px;
+.no-photo {
+    color: #697586;
+    font-size: 14px;
 }
 
-.thumbnails{
-    display:grid;
-    grid-template-columns:repeat(4,minmax(0,1fr));
-    gap:7px;
-    overflow-y:auto;
-    align-content:start;
-    padding-right:3px;
-    min-width:0;
+.thumbnails {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+    overflow-y: auto;
+    align-content: start;
+    padding-right: 3px;
+    min-width: 0;
 }
 
-.thumb{
-    width:100%;
-    height:65px;
-    object-fit:cover;
-    border:2px solid transparent;
-    border-radius:7px;
-    cursor:pointer;
-    background:#f2f4f7;
-    box-sizing:border-box;
+.thumb {
+    width: 100%;
+    height: 65px;
+    object-fit: cover;
+    border: 2px solid transparent;
+    border-radius: 7px;
+    cursor: pointer;
+    background: #f2f4f7;
+    box-sizing: border-box;
 }
 
-.thumb:hover{
-    border-color:#98a2b3;
+.thumb:hover {
+    border-color: #98a2b3;
 }
 
-.thumb.active{
-    border-color:#111827;
+.thumb.active {
+    border-color: #111827;
 }
 
-@media(max-width:800px){
-    .prepare-grid{
-        grid-template-columns:1fr;
+@media (max-width: 800px) {
+    .prepare-grid {
+        grid-template-columns: 1fr;
     }
 
-    .gallery-layout{
-        grid-template-columns:1fr;
-        height:auto;
+    .gallery-layout {
+        grid-template-columns: 1fr;
+        height: auto;
     }
 
-    .main-photo-wrap{
-        height:250px;
+    .main-photo-wrap {
+        height: 250px;
     }
 
-    .thumbnails{
-        grid-template-columns:repeat(4,minmax(0,1fr));
-        max-height:180px;
+    .thumbnails {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        max-height: 180px;
     }
 
-    .thumb{
-        height:auto;
-        aspect-ratio:4/3;
+    .thumb {
+        height: auto;
+        aspect-ratio: 4 / 3;
     }
 
-    .action-row{
-        flex-direction:column;
+    .action-row {
+        flex-direction: column;
     }
 }
 </style>
@@ -254,7 +299,9 @@
     <nav>
         <a href="/">Dashboard</a>
         <a href="/inventario">Inventario</a>
-        <a href="/publicaciones" class="active">Publicaciones</a>
+        <a href="/publicaciones" class="active">
+            Publicaciones
+        </a>
         <a href="/leads">Leads</a>
         <a href="/actividad">Actividad</a>
         <a href="/configuracion">Configuración</a>
@@ -289,32 +336,55 @@
     <div id="vehicleContent" style="display:none">
 
         <!-- FOTOS -->
+
         <div class="prepare-card">
+
             <div class="gallery-head">
                 <h2>Fotos del vehículo</h2>
+
                 <span class="photo-count" id="photoCount">
                     Verificando fotos...
                 </span>
             </div>
 
-            <div class="gallery-layout single-photo" id="galleryLayout">
-                <div class="main-photo-wrap" id="mainPhotoWrap">
+            <div
+                class="gallery-layout single-photo"
+                id="galleryLayout"
+            >
+                <div
+                    class="main-photo-wrap"
+                    id="mainPhotoWrap"
+                >
                     <span class="no-photo">
                         Verificando fotos disponibles...
                     </span>
                 </div>
 
-                <div class="thumbnails" id="thumbnails"></div>
+                <div
+                    class="thumbnails"
+                    id="thumbnails"
+                ></div>
             </div>
+
         </div>
 
         <!-- INFORMACIÓN -->
+
         <div class="prepare-grid">
 
             <div>
+
                 <div class="prepare-card">
-                    <div class="vehicle-title" id="vehicleName"></div>
-                    <div class="vehicle-vin" id="vehicleVin"></div>
+
+                    <div
+                        class="vehicle-title"
+                        id="vehicleName"
+                    ></div>
+
+                    <div
+                        class="vehicle-vin"
+                        id="vehicleVin"
+                    ></div>
 
                     <div class="info-row">
                         <span>Millaje</span>
@@ -328,18 +398,26 @@
 
                     <div class="info-row">
                         <span>Precio Marketplace</span>
-                        <strong class="market-price" id="marketPrice">—</strong>
+                        <strong
+                            class="market-price"
+                            id="marketPrice"
+                        >—</strong>
                     </div>
 
                     <div class="info-row">
                         <span>Estado</span>
                         <strong>
-                            <span class="status" id="status">pending</span>
+                            <span
+                                class="status"
+                                id="status"
+                            >Pendiente</span>
                         </strong>
                     </div>
+
                 </div>
 
                 <div class="prepare-card">
+
                     <h2>Información del vehículo</h2>
 
                     <div class="info-row">
@@ -356,79 +434,109 @@
                         <span>Stock</span>
                         <strong id="stock">—</strong>
                     </div>
+
                 </div>
+
             </div>
 
-            <!-- MARKETPLACE -->
+            <!-- PUBLICACIÓN DE MARKETPLACE -->
+
             <div>
+
                 <div class="prepare-card">
+
                     <h2>Publicación de Marketplace</h2>
 
                     <div class="field">
-                        <label>TÍTULO</label>
+                        <label for="listingTitle">
+                            TÍTULO
+                        </label>
+
                         <input id="listingTitle">
                     </div>
 
                     <div class="field">
-                        <label>PRECIO</label>
+                        <label for="listingPrice">
+                            PRECIO
+                        </label>
+
                         <input id="listingPrice">
                     </div>
 
                     <div class="field">
-                        <label>DESCRIPCIÓN</label>
+                        <label for="description">
+                            DESCRIPCIÓN
+                        </label>
+
                         <textarea id="description"></textarea>
                     </div>
 
+                    <!-- BOTONES PRINCIPALES -->
+
                     <div class="action-row">
-                        <button onclick="generateDescription()">
+
+                        <button
+                            type="button"
+                            onclick="generateDescription()"
+                        >
                             Generar descripción
-                        </button>
-
-                        <button class="secondary" onclick="copyListing()">
-                            Copiar publicación
-                        </button>
-                    </div>
-
-                    <!-- NUEVOS BOTONES MARKETPLACE -->
-                    <div class="action-row">
-                        <button type="button" onclick="openMarketplace()">
-                            Abrir Facebook Marketplace
                         </button>
 
                         <button
                             type="button"
-                            class="secondary"
-                            id="downloadPhotosButton"
-                            onclick="downloadPhotos()"
+                            class="published-button"
+                            id="markPublishedButton"
+                            onclick="markAsPublished()"
                             disabled
                         >
-                            Descargar fotos
+                            Marcar como publicado
                         </button>
+
                     </div>
 
-                    <p id="photoDownloadNote"
-                       style="color:#697586;font-size:12px;margin-top:10px;">
-                        Las fotos se descargarán individualmente.
-                        Confirma la publicación en Facebook antes de
-                        marcarla como publicada.
+                    <div class="action-row">
+
+                        <button
+                            type="button"
+                            onclick="openMarketplace()"
+                        >
+                            Abrir Facebook Marketplace
+                        </button>
+
+                    </div>
+
+                    <p
+                        id="publicationNotice"
+                        class="publication-notice"
+                        role="status"
+                        aria-live="polite"
+                    >
+                        Publica primero el vehículo en Facebook
+                        Marketplace. Después confirma aquí
+                        que el anuncio ya está publicado.
                     </p>
+
                 </div>
+
             </div>
 
         </div>
+
     </div>
+
 </div>
 </section>
 </main>
 
 <script>
+
 const money = (value) => {
     const number = Number(value || 0);
 
     return new Intl.NumberFormat("en-US", {
-        style:"currency",
-        currency:"USD",
-        maximumFractionDigits:0
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0
     }).format(number);
 };
 
@@ -438,10 +546,184 @@ const vin = decodeURIComponent(
 
 let vehicle = null;
 let photos = [];
+let savingPublication = false;
+
+function setPublicationNotice(message, type = "") {
+    const notice = document.getElementById(
+        "publicationNotice"
+    );
+
+    notice.textContent = message;
+    notice.className = "publication-notice";
+
+    if (type) {
+        notice.classList.add(type);
+    }
+}
+
+/* ESTADO DE PUBLICACIÓN */
+
+function renderPublicationStatus() {
+    if (!vehicle) {
+        return;
+    }
+
+    const statusElement = document.getElementById(
+        "status"
+    );
+
+    const button = document.getElementById(
+        "markPublishedButton"
+    );
+
+    const published = vehicle.status === "published";
+    const available = vehicle.is_available !== false;
+
+    statusElement.className = "status";
+
+    if (!available) {
+        statusElement.textContent = "No disponible";
+        statusElement.classList.add("unavailable");
+
+        button.textContent = "Vehículo no disponible";
+        button.disabled = true;
+        return;
+    }
+
+    if (published) {
+        statusElement.textContent = "Publicado";
+        statusElement.classList.add("published");
+
+        button.textContent = "✓ Publicado";
+        button.disabled = true;
+        return;
+    }
+
+    const statusNames = {
+        pending: "Pendiente",
+        error: "Error"
+    };
+
+    statusElement.textContent =
+        statusNames[vehicle.status] ||
+        vehicle.status ||
+        "Pendiente";
+
+    button.textContent = savingPublication
+        ? "Guardando..."
+        : "Marcar como publicado";
+
+    button.disabled = savingPublication;
+}
+
+/* MARCAR COMO PUBLICADO */
+
+async function markAsPublished() {
+
+    if (!vehicle || savingPublication) {
+        return;
+    }
+
+    if (vehicle.is_available === false) {
+        setPublicationNotice(
+            "Este vehículo ya no está disponible en el inventario.",
+            "error"
+        );
+        return;
+    }
+
+    if (vehicle.status === "published") {
+        setPublicationNotice(
+            "Este vehículo ya está marcado como publicado.",
+            "success"
+        );
+        return;
+    }
+
+    const confirmed = confirm(
+        "¿Confirmas que ya publicaste este vehículo " +
+        "en Facebook Marketplace?\n\n" +
+        "Esta acción actualizará su estado en BoostMarket."
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    savingPublication = true;
+    renderPublicationStatus();
+
+    setPublicationNotice(
+        "Guardando estado de publicación..."
+    );
+
+    try {
+
+        const response = await fetch(
+            "/api/publication-status/" +
+            encodeURIComponent(vehicle.vin),
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    status: "published"
+                })
+            }
+        );
+
+        let result;
+
+        try {
+            result = await response.json();
+        } catch (error) {
+            throw new Error(
+                "El servidor no devolvió una respuesta válida."
+            );
+        }
+
+        if (!response.ok || !result.ok) {
+            throw new Error(
+                result.detail ||
+                result.error ||
+                "No se pudo guardar el estado."
+            );
+        }
+
+        vehicle.status = result.status;
+        vehicle.published_at = result.published_at;
+
+        setPublicationNotice(
+            "Vehículo marcado como publicado correctamente. " +
+            "El estado quedó guardado en BoostMarket.",
+            "success"
+        );
+
+    } catch (error) {
+
+        setPublicationNotice(
+            "Error: " + error.message,
+            "error"
+        );
+
+    } finally {
+
+        savingPublication = false;
+        renderPublicationStatus();
+
+    }
+}
+
+/* VERIFICAR FOTOGRAFÍAS */
 
 function checkPhoto(url) {
     return new Promise((resolve) => {
-        if (typeof url !== "string" || !url.trim()) {
+
+        if (
+            typeof url !== "string" ||
+            !url.trim()
+        ) {
             resolve(null);
             return;
         }
@@ -472,25 +754,38 @@ function checkPhoto(url) {
 /* COMPROBAR FOTOS REALES */
 
 async function verifyPhotos(urls) {
+
     const uniqueUrls = [
         ...new Set(
             urls.filter(
-                url => typeof url === "string" && url.trim()
+                url =>
+                    typeof url === "string" &&
+                    url.trim()
             )
         )
     ];
 
     const validPhotos = [];
 
-    for (let i = 0; i < uniqueUrls.length; i += 5) {
-        const group = uniqueUrls.slice(i, i + 5);
+    for (
+        let i = 0;
+        i < uniqueUrls.length;
+        i += 5
+    ) {
+
+        const group = uniqueUrls.slice(
+            i,
+            i + 5
+        );
 
         const results = await Promise.all(
             group.map(checkPhoto)
         );
 
         results.forEach(url => {
-            if (url) validPhotos.push(url);
+            if (url) {
+                validPhotos.push(url);
+            }
         });
     }
 
@@ -500,25 +795,38 @@ async function verifyPhotos(urls) {
 /* GALERÍA */
 
 function renderPhotos() {
-    const count = document.getElementById("photoCount");
-    const mainWrap = document.getElementById("mainPhotoWrap");
-    const thumbs = document.getElementById("thumbnails");
-    const layout = document.getElementById("galleryLayout");
+
+    const count = document.getElementById(
+        "photoCount"
+    );
+
+    const mainWrap = document.getElementById(
+        "mainPhotoWrap"
+    );
+
+    const thumbs = document.getElementById(
+        "thumbnails"
+    );
+
+    const layout = document.getElementById(
+        "galleryLayout"
+    );
 
     count.textContent =
-        photos.length + (photos.length === 1 ? " foto" : " fotos");
+        photos.length +
+        (photos.length === 1 ? " foto" : " fotos");
 
     thumbs.innerHTML = "";
     mainWrap.innerHTML = "";
 
-    document.getElementById("downloadPhotosButton").disabled =
-        photos.length === 0;
-
     if (photos.length === 0) {
+
         layout.classList.add("single-photo");
 
         mainWrap.innerHTML =
-            '<span class="no-photo">Sin fotos disponibles</span>';
+            '<span class="no-photo">' +
+            'Sin fotos disponibles' +
+            '</span>';
 
         return;
     }
@@ -530,18 +838,25 @@ function renderPhotos() {
     }
 
     const mainImage = document.createElement("img");
+
     mainImage.id = "mainPhoto";
     mainImage.className = "main-photo";
-    mainImage.alt = vehicle && vehicle.vehicle
-        ? vehicle.vehicle
-        : "Vehículo";
+
+    mainImage.alt =
+        vehicle && vehicle.vehicle
+            ? vehicle.vehicle
+            : "Vehículo";
 
     mainImage.src = photos[0];
 
     mainImage.onerror = function() {
+
         const brokenUrl = mainImage.src;
 
-        photos = photos.filter(url => url !== brokenUrl);
+        photos = photos.filter(
+            url => url !== brokenUrl
+        );
+
         renderPhotos();
     };
 
@@ -552,28 +867,51 @@ function renderPhotos() {
     }
 
     photos.forEach((url, index) => {
+
         const thumbnail = document.createElement("img");
 
         thumbnail.src = url;
         thumbnail.alt = "Foto " + (index + 1);
         thumbnail.loading = "lazy";
+
         thumbnail.className =
-            index === 0 ? "thumb active" : "thumb";
+            index === 0
+                ? "thumb active"
+                : "thumb";
 
-        thumbnail.addEventListener("error", function() {
-            photos = photos.filter(photo => photo !== url);
-            renderPhotos();
-        }, {once:true});
+        thumbnail.addEventListener(
+            "error",
+            function() {
 
-        thumbnail.addEventListener("click", function() {
-            mainImage.src = url;
+                photos = photos.filter(
+                    photo => photo !== url
+                );
 
-            thumbs.querySelectorAll(".thumb").forEach(item => {
-                item.classList.remove("active");
-            });
+                renderPhotos();
 
-            thumbnail.classList.add("active");
-        });
+            },
+            { once: true }
+        );
+
+        thumbnail.addEventListener(
+            "click",
+            function() {
+
+                mainImage.src = url;
+
+                thumbs
+                    .querySelectorAll(".thumb")
+                    .forEach(item => {
+                        item.classList.remove(
+                            "active"
+                        );
+                    });
+
+                thumbnail.classList.add(
+                    "active"
+                );
+            }
+        );
 
         thumbs.appendChild(thumbnail);
     });
@@ -582,127 +920,157 @@ function renderPhotos() {
 /* CARGAR VEHÍCULO */
 
 async function loadVehicle() {
+
     try {
+
         const response = await fetch(
-            "/api/vehicle/" + encodeURIComponent(vin)
+            "/api/vehicle/" +
+            encodeURIComponent(vin)
         );
 
         if (!response.ok) {
-            throw new Error("No se pudo cargar el vehículo");
+            throw new Error(
+                "No se pudo cargar el vehículo"
+            );
         }
 
         const result = await response.json();
 
         if (!result.ok) {
             throw new Error(
-                result.error || "Vehículo no encontrado"
+                result.error ||
+                "Vehículo no encontrado"
             );
         }
 
         vehicle = result.vehicle;
 
-        document.getElementById("vehicleName").textContent =
+        document.getElementById(
+            "vehicleName"
+        ).textContent =
             vehicle.vehicle || "Vehículo";
 
-        document.getElementById("vehicleVin").textContent =
+        document.getElementById(
+            "vehicleVin"
+        ).textContent =
             "VIN: " + vehicle.vin;
 
-        document.getElementById("vinInfo").textContent =
+        document.getElementById(
+            "vinInfo"
+        ).textContent =
             vehicle.vin || "—";
 
-        document.getElementById("mileage").textContent =
+        document.getElementById(
+            "mileage"
+        ).textContent =
             vehicle.mileage
-                ? Number(vehicle.mileage).toLocaleString("en-US") + " mi"
+                ? Number(
+                    vehicle.mileage
+                ).toLocaleString("en-US") + " mi"
                 : "—";
 
-        document.getElementById("yourPrice").textContent =
+        document.getElementById(
+            "yourPrice"
+        ).textContent =
             money(vehicle.your_price);
 
-        document.getElementById("marketPrice").textContent =
+        document.getElementById(
+            "marketPrice"
+        ).textContent =
             money(vehicle.marketplace_price);
 
-        document.getElementById("condition").textContent =
+        document.getElementById(
+            "condition"
+        ).textContent =
             vehicle.condition || "Used";
 
-        document.getElementById("status").textContent =
-            vehicle.status || "pending";
-
-        document.getElementById("stock").textContent =
+        document.getElementById(
+            "stock"
+        ).textContent =
             vehicle.stock || "—";
 
-        document.getElementById("listingTitle").value =
+        document.getElementById(
+            "listingTitle"
+        ).value =
             vehicle.vehicle || "";
 
-        document.getElementById("listingPrice").value =
+        document.getElementById(
+            "listingPrice"
+        ).value =
             vehicle.marketplace_price || "";
+
+        renderPublicationStatus();
 
         generateDescription();
 
-        document.getElementById("loading").style.display = "none";
-        document.getElementById("vehicleContent").style.display = "block";
+        document.getElementById(
+            "loading"
+        ).style.display = "none";
 
-        const returnedPhotos = Array.isArray(result.photos)
-            ? result.photos
-            : [];
+        document.getElementById(
+            "vehicleContent"
+        ).style.display = "block";
 
-        photos = await verifyPhotos(returnedPhotos);
+        const returnedPhotos =
+            Array.isArray(result.photos)
+                ? result.photos
+                : [];
+
+        photos = await verifyPhotos(
+            returnedPhotos
+        );
+
         renderPhotos();
 
-    } catch(error) {
-        document.getElementById("loading").innerHTML =
-            "<strong>Error:</strong> " + error.message;
+    } catch (error) {
+
+        document.getElementById(
+            "loading"
+        ).textContent =
+            "Error: " + error.message;
     }
 }
 
-/* DESCRIPCIÓN */
+/* GENERAR DESCRIPCIÓN */
 
 function generateDescription() {
-    if (!vehicle) return;
 
-    const name = vehicle.vehicle || "Used Vehicle";
+    if (!vehicle) {
+        return;
+    }
+
+    const name =
+        vehicle.vehicle || "Used Vehicle";
 
     const mileage = vehicle.mileage
-        ? Number(vehicle.mileage).toLocaleString("en-US") + " miles"
+        ? Number(
+            vehicle.mileage
+        ).toLocaleString("en-US") + " miles"
         : "";
 
     let description = name + "\n\n";
 
     if (mileage) {
-        description += "Mileage: " + mileage + "\n";
+        description +=
+            "Mileage: " + mileage + "\n";
     }
 
     description +=
         "VIN: " + vehicle.vin + "\n\n" +
         "Financing options available.\n" +
         "Trade-ins welcome.\n\n" +
-        "Send me a message for more information, financing options, or to schedule a test drive.";
+        "Send me a message for more information, " +
+        "financing options, or to schedule a test drive.";
 
-    document.getElementById("description").value = description;
-}
-
-/* COPIAR */
-
-async function copyListing() {
-    const title = document.getElementById("listingTitle").value;
-    const price = document.getElementById("listingPrice").value;
-    const description = document.getElementById("description").value;
-
-    const text =
-        title + "\n\n" +
-        "Price: " + money(Number(price)) + "\n\n" +
-        description;
-
-    try {
-        await navigator.clipboard.writeText(text);
-        alert("Publicación copiada.");
-    } catch(error) {
-        alert("No se pudo copiar la publicación.");
-    }
+    document.getElementById(
+        "description"
+    ).value = description;
 }
 
 /* ABRIR FACEBOOK MARKETPLACE */
 
 function openMarketplace() {
+
     window.open(
         "https://www.facebook.com/marketplace/create/vehicle",
         "_blank",
@@ -710,76 +1078,10 @@ function openMarketplace() {
     );
 }
 
-/* DESCARGAR FOTOGRAFÍAS */
-
-async function downloadPhotos() {
-    if (!photos.length) {
-        alert("Este vehículo no tiene fotos disponibles para descargar.");
-        return;
-    }
-
-    const button = document.getElementById("downloadPhotosButton");
-    button.disabled = true;
-
-    const originalLabel = button.textContent;
-    button.textContent = "Preparando fotos...";
-
-    let downloaded = 0;
-    let failed = 0;
-
-    try {
-        for (let i = 0; i < photos.length; i++) {
-            try {
-                const response = await fetch(photos[i]);
-
-                if (!response.ok) {
-                    throw new Error("No se pudo obtener la foto");
-                }
-
-                const blob = await response.blob();
-                const objectUrl = URL.createObjectURL(blob);
-
-                const anchor = document.createElement("a");
-                anchor.href = objectUrl;
-                anchor.download =
-                    (vehicle.vin || "vehiculo") +
-                    "-foto-" + (i + 1) + ".jpg";
-
-                document.body.appendChild(anchor);
-                anchor.click();
-                anchor.remove();
-
-                setTimeout(() => {
-                    URL.revokeObjectURL(objectUrl);
-                }, 60000);
-
-                downloaded++;
-
-            } catch(error) {
-                failed++;
-            }
-        }
-
-        if (failed) {
-            alert(
-                downloaded + " foto(s) descargadas. " +
-                failed + " no se pudieron descargar automáticamente. " +
-                "Puedes abrir la imagen de la galería y guardarla manualmente."
-            );
-        } else {
-            alert(
-                downloaded + " foto(s) preparadas. " +
-                "Si Chrome bloqueó descargas múltiples, autorízalas para este sitio."
-            );
-        }
-
-    } finally {
-        button.disabled = photos.length === 0;
-        button.textContent = originalLabel;
-    }
-}
+/* INICIAR */
 
 loadVehicle();
+
 </script>
 
 </body>
