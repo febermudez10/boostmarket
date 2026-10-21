@@ -139,6 +139,12 @@ def init_db():
                 ALTER TABLE vehicles
                 ADD COLUMN IF NOT EXISTS published_at TEXT
             """)
+            # Confirmación manual de retirada del anuncio de Marketplace.
+            cur.execute("""
+                ALTER TABLE vehicles
+                ADD COLUMN IF NOT EXISTS marketplace_removed_at TEXT
+            """)
+
             # Migración compatible con el estado antiguo unavailable.
             cur.execute("""
                 UPDATE vehicles
@@ -661,7 +667,17 @@ def summary():
 
             leads = cur.fetchone()["n"]
 
+            cur.execute("""
+                SELECT COUNT(*) AS n
+                FROM vehicles
+                WHERE is_available = FALSE
+                  AND status = 'published'
+                  AND marketplace_removed_at IS NULL
+            """)
+            to_remove = cur.fetchone()["n"]
+
     return {
+        "to_remove": to_remove,
         "vehicles": total,
         "available": total,
         "published": published,
@@ -1093,6 +1109,10 @@ async def import_vincue(
                             stock = EXCLUDED.stock,
                             pic_count = EXCLUDED.pic_count,
                             is_available = TRUE,
+                            marketplace_removed_at = CASE
+                                WHEN vehicles.is_available = FALSE THEN NULL
+                                ELSE vehicles.marketplace_removed_at
+                            END,
                             photo = CASE
                                 WHEN EXCLUDED.photo IS NOT NULL
                                 AND EXCLUDED.photo <> ''
@@ -1502,7 +1522,8 @@ def update_publication_status(vin: str, payload: PublicationStatusUpdate):
                         WHEN %s = 'published' THEN COALESCE(published_at, %s)
                         ELSE NULL
                     END,
-                    updated_at = %s
+                    updated_at = %s,
+                    marketplace_removed_at = NULL
                 WHERE vin = %s AND is_available = TRUE
                 RETURNING vin, status, published_at
             """, (payload.status, payload.status, now, now, vin))
@@ -1513,6 +1534,41 @@ def update_publication_status(vin: str, payload: PublicationStatusUpdate):
         raise HTTPException(
             status_code=404,
             detail="Vehículo no encontrado o retirado del inventario"
+        )
+
+    return {"ok": True, **updated}
+
+
+# ============================================================
+# CONFIRMAR RETIRO MANUAL DE FACEBOOK MARKETPLACE
+# ============================================================
+
+@app.post("/api/confirm-marketplace-removal/{vin}")
+def confirm_marketplace_removal(vin: str):
+    vin = (vin or "").strip().upper()
+    if not re.fullmatch(r"[A-HJ-NPR-Z0-9]{17}", vin):
+        raise HTTPException(status_code=400, detail="VIN inválido")
+
+    now = datetime.now(timezone.utc).isoformat()
+    with db() as connection:
+        with connection.cursor() as cur:
+            cur.execute("""
+                UPDATE vehicles
+                SET marketplace_removed_at = %s,
+                    updated_at = %s
+                WHERE vin = %s
+                  AND is_available = FALSE
+                  AND status = 'published'
+                  AND marketplace_removed_at IS NULL
+                RETURNING vin, marketplace_removed_at
+            """, (now, now, vin))
+            updated = cur.fetchone()
+        connection.commit()
+
+    if not updated:
+        raise HTTPException(
+            status_code=409,
+            detail="El vehículo no está pendiente de retiro o ya fue confirmado"
         )
 
     return {"ok": True, **updated}
