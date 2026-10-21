@@ -4,7 +4,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <title>Preparar publicación - BoostMarket</title>
 <link rel="stylesheet" href="/static/app.css">
 
@@ -120,12 +119,6 @@
     flex-wrap: wrap;
 }
 
-.secondary {
-    background: #fff;
-    color: #111827;
-    border: 1px solid #d4d9e0;
-}
-
 .published-button {
     background: #067647;
     color: #fff;
@@ -167,7 +160,7 @@
     color: #697586;
 }
 
-/* GALERÍA COMPACTA */
+/* GALERÍA */
 
 .gallery-head {
     display: flex;
@@ -299,9 +292,7 @@
     <nav>
         <a href="/">Dashboard</a>
         <a href="/inventario">Inventario</a>
-        <a href="/publicaciones" class="active">
-            Publicaciones
-        </a>
+        <a href="/publicaciones" class="active">Publicaciones</a>
         <a href="/leads">Leads</a>
         <a href="/actividad">Actividad</a>
         <a href="/configuracion">Configuración</a>
@@ -335,56 +326,35 @@
 
     <div id="vehicleContent" style="display:none">
 
-        <!-- FOTOS -->
+        <!-- FOTOGRAFÍAS -->
 
         <div class="prepare-card">
-
             <div class="gallery-head">
                 <h2>Fotos del vehículo</h2>
-
                 <span class="photo-count" id="photoCount">
                     Verificando fotos...
                 </span>
             </div>
 
-            <div
-                class="gallery-layout single-photo"
-                id="galleryLayout"
-            >
-                <div
-                    class="main-photo-wrap"
-                    id="mainPhotoWrap"
-                >
+            <div class="gallery-layout single-photo" id="galleryLayout">
+                <div class="main-photo-wrap" id="mainPhotoWrap">
                     <span class="no-photo">
                         Verificando fotos disponibles...
                     </span>
                 </div>
 
-                <div
-                    class="thumbnails"
-                    id="thumbnails"
-                ></div>
+                <div class="thumbnails" id="thumbnails"></div>
             </div>
-
         </div>
 
         <!-- INFORMACIÓN -->
 
         <div class="prepare-grid">
-
             <div>
 
                 <div class="prepare-card">
-
-                    <div
-                        class="vehicle-title"
-                        id="vehicleName"
-                    ></div>
-
-                    <div
-                        class="vehicle-vin"
-                        id="vehicleVin"
-                    ></div>
+                    <div class="vehicle-title" id="vehicleName"></div>
+                    <div class="vehicle-vin" id="vehicleVin"></div>
 
                     <div class="info-row">
                         <span>Millaje</span>
@@ -398,26 +368,18 @@
 
                     <div class="info-row">
                         <span>Precio Marketplace</span>
-                        <strong
-                            class="market-price"
-                            id="marketPrice"
-                        >—</strong>
+                        <strong class="market-price" id="marketPrice">—</strong>
                     </div>
 
                     <div class="info-row">
                         <span>Estado</span>
                         <strong>
-                            <span
-                                class="status"
-                                id="status"
-                            >Pendiente</span>
+                            <span class="status" id="status">Pendiente</span>
                         </strong>
                     </div>
-
                 </div>
 
                 <div class="prepare-card">
-
                     <h2>Información del vehículo</h2>
 
                     <div class="info-row">
@@ -434,7 +396,6 @@
                         <span>Stock</span>
                         <strong id="stock">—</strong>
                     </div>
-
                 </div>
 
             </div>
@@ -442,46 +403,31 @@
             <!-- PUBLICACIÓN DE MARKETPLACE -->
 
             <div>
-
                 <div class="prepare-card">
-
                     <h2>Publicación de Marketplace</h2>
 
                     <div class="field">
-                        <label for="listingTitle">
-                            TÍTULO
-                        </label>
-
+                        <label for="listingTitle">TÍTULO</label>
                         <input id="listingTitle">
                     </div>
 
                     <div class="field">
-                        <label for="listingPrice">
-                            PRECIO
-                        </label>
-
+                        <label for="listingPrice">PRECIO</label>
                         <input id="listingPrice">
                     </div>
 
                     <div class="field">
-                        <label for="description">
-                            DESCRIPCIÓN
-                        </label>
-
+                        <label for="description">DESCRIPCIÓN</label>
                         <textarea id="description"></textarea>
                     </div>
 
-                    <!-- BOTONES PRINCIPALES -->
+                    <!--
+                    El botón "Preparar vehículo en Marketplace"
+                    lo incorpora automáticamente la extensión
+                    BoostMarket Marketplace Assistant.
+                    -->
 
                     <div class="action-row">
-
-                        <button
-                            type="button"
-                            onclick="generateDescription()"
-                        >
-                            Generar descripción
-                        </button>
-
                         <button
                             type="button"
                             class="published-button"
@@ -491,18 +437,6 @@
                         >
                             Marcar como publicado
                         </button>
-
-                    </div>
-
-                    <div class="action-row">
-
-                        <button
-                            type="button"
-                            onclick="openMarketplace()"
-                        >
-                            Abrir Facebook Marketplace
-                        </button>
-
                     </div>
 
                     <p
@@ -511,25 +445,19 @@
                         role="status"
                         aria-live="polite"
                     >
-                        Publica primero el vehículo en Facebook
-                        Marketplace. Después confirma aquí
-                        que el anuncio ya está publicado.
+                        Publica primero el vehículo en Facebook Marketplace.
+                        Después confirma aquí que el anuncio ya está publicado.
                     </p>
 
                 </div>
-
             </div>
-
         </div>
-
     </div>
-
 </div>
 </section>
 </main>
 
 <script>
-
 const money = (value) => {
     const number = Number(value || 0);
 
@@ -541,7 +469,7 @@ const money = (value) => {
 };
 
 const vin = decodeURIComponent(
-    window.location.pathname.split("/").pop()
+    window.location.pathname.split("/").filter(Boolean).pop()
 );
 
 let vehicle = null;
@@ -549,10 +477,7 @@ let photos = [];
 let savingPublication = false;
 
 function setPublicationNotice(message, type = "") {
-    const notice = document.getElementById(
-        "publicationNotice"
-    );
-
+    const notice = document.getElementById("publicationNotice");
     notice.textContent = message;
     notice.className = "publication-notice";
 
@@ -568,13 +493,8 @@ function renderPublicationStatus() {
         return;
     }
 
-    const statusElement = document.getElementById(
-        "status"
-    );
-
-    const button = document.getElementById(
-        "markPublishedButton"
-    );
+    const statusElement = document.getElementById("status");
+    const button = document.getElementById("markPublishedButton");
 
     const published = vehicle.status === "published";
     const available = vehicle.is_available !== false;
@@ -619,7 +539,6 @@ function renderPublicationStatus() {
 /* MARCAR COMO PUBLICADO */
 
 async function markAsPublished() {
-
     if (!vehicle || savingPublication) {
         return;
     }
@@ -653,15 +572,11 @@ async function markAsPublished() {
     savingPublication = true;
     renderPublicationStatus();
 
-    setPublicationNotice(
-        "Guardando estado de publicación..."
-    );
+    setPublicationNotice("Guardando estado de publicación...");
 
     try {
-
         const response = await fetch(
-            "/api/publication-status/" +
-            encodeURIComponent(vehicle.vin),
+            "/api/publication-status/" + encodeURIComponent(vehicle.vin),
             {
                 method: "POST",
                 headers: {
@@ -701,17 +616,14 @@ async function markAsPublished() {
         );
 
     } catch (error) {
-
         setPublicationNotice(
             "Error: " + error.message,
             "error"
         );
 
     } finally {
-
         savingPublication = false;
         renderPublicationStatus();
-
     }
 }
 
@@ -719,11 +631,7 @@ async function markAsPublished() {
 
 function checkPhoto(url) {
     return new Promise((resolve) => {
-
-        if (
-            typeof url !== "string" ||
-            !url.trim()
-        ) {
+        if (typeof url !== "string" || !url.trim()) {
             resolve(null);
             return;
         }
@@ -751,36 +659,20 @@ function checkPhoto(url) {
     });
 }
 
-/* COMPROBAR FOTOS REALES */
-
 async function verifyPhotos(urls) {
-
     const uniqueUrls = [
         ...new Set(
-            urls.filter(
-                url =>
-                    typeof url === "string" &&
-                    url.trim()
+            urls.filter(url =>
+                typeof url === "string" && url.trim()
             )
         )
     ];
 
     const validPhotos = [];
 
-    for (
-        let i = 0;
-        i < uniqueUrls.length;
-        i += 5
-    ) {
-
-        const group = uniqueUrls.slice(
-            i,
-            i + 5
-        );
-
-        const results = await Promise.all(
-            group.map(checkPhoto)
-        );
+    for (let i = 0; i < uniqueUrls.length; i += 5) {
+        const group = uniqueUrls.slice(i, i + 5);
+        const results = await Promise.all(group.map(checkPhoto));
 
         results.forEach(url => {
             if (url) {
@@ -795,22 +687,10 @@ async function verifyPhotos(urls) {
 /* GALERÍA */
 
 function renderPhotos() {
-
-    const count = document.getElementById(
-        "photoCount"
-    );
-
-    const mainWrap = document.getElementById(
-        "mainPhotoWrap"
-    );
-
-    const thumbs = document.getElementById(
-        "thumbnails"
-    );
-
-    const layout = document.getElementById(
-        "galleryLayout"
-    );
+    const count = document.getElementById("photoCount");
+    const mainWrap = document.getElementById("mainPhotoWrap");
+    const thumbs = document.getElementById("thumbnails");
+    const layout = document.getElementById("galleryLayout");
 
     count.textContent =
         photos.length +
@@ -820,14 +700,10 @@ function renderPhotos() {
     mainWrap.innerHTML = "";
 
     if (photos.length === 0) {
-
         layout.classList.add("single-photo");
 
         mainWrap.innerHTML =
-            '<span class="no-photo">' +
-            'Sin fotos disponibles' +
-            '</span>';
-
+            '<span class="no-photo">Sin fotos disponibles</span>';
         return;
     }
 
@@ -838,7 +714,6 @@ function renderPhotos() {
     }
 
     const mainImage = document.createElement("img");
-
     mainImage.id = "mainPhoto";
     mainImage.className = "main-photo";
 
@@ -850,13 +725,9 @@ function renderPhotos() {
     mainImage.src = photos[0];
 
     mainImage.onerror = function() {
-
         const brokenUrl = mainImage.src;
 
-        photos = photos.filter(
-            url => url !== brokenUrl
-        );
-
+        photos = photos.filter(url => url !== brokenUrl);
         renderPhotos();
     };
 
@@ -867,7 +738,6 @@ function renderPhotos() {
     }
 
     photos.forEach((url, index) => {
-
         const thumbnail = document.createElement("img");
 
         thumbnail.src = url;
@@ -875,43 +745,26 @@ function renderPhotos() {
         thumbnail.loading = "lazy";
 
         thumbnail.className =
-            index === 0
-                ? "thumb active"
-                : "thumb";
+            index === 0 ? "thumb active" : "thumb";
 
         thumbnail.addEventListener(
             "error",
             function() {
-
-                photos = photos.filter(
-                    photo => photo !== url
-                );
-
+                photos = photos.filter(photo => photo !== url);
                 renderPhotos();
-
             },
             { once: true }
         );
 
-        thumbnail.addEventListener(
-            "click",
-            function() {
+        thumbnail.addEventListener("click", function() {
+            mainImage.src = url;
 
-                mainImage.src = url;
+            thumbs.querySelectorAll(".thumb").forEach(item => {
+                item.classList.remove("active");
+            });
 
-                thumbs
-                    .querySelectorAll(".thumb")
-                    .forEach(item => {
-                        item.classList.remove(
-                            "active"
-                        );
-                    });
-
-                thumbnail.classList.add(
-                    "active"
-                );
-            }
-        );
+            thumbnail.classList.add("active");
+        });
 
         thumbs.appendChild(thumbnail);
     });
@@ -920,139 +773,95 @@ function renderPhotos() {
 /* CARGAR VEHÍCULO */
 
 async function loadVehicle() {
-
     try {
-
         const response = await fetch(
-            "/api/vehicle/" +
-            encodeURIComponent(vin)
+            "/api/vehicle/" + encodeURIComponent(vin)
         );
 
         if (!response.ok) {
-            throw new Error(
-                "No se pudo cargar el vehículo"
-            );
+            throw new Error("No se pudo cargar el vehículo");
         }
 
         const result = await response.json();
 
         if (!result.ok) {
             throw new Error(
-                result.error ||
-                "Vehículo no encontrado"
+                result.error || "Vehículo no encontrado"
             );
         }
 
         vehicle = result.vehicle;
 
-        document.getElementById(
-            "vehicleName"
-        ).textContent =
+        document.getElementById("vehicleName").textContent =
             vehicle.vehicle || "Vehículo";
 
-        document.getElementById(
-            "vehicleVin"
-        ).textContent =
+        document.getElementById("vehicleVin").textContent =
             "VIN: " + vehicle.vin;
 
-        document.getElementById(
-            "vinInfo"
-        ).textContent =
+        document.getElementById("vinInfo").textContent =
             vehicle.vin || "—";
 
-        document.getElementById(
-            "mileage"
-        ).textContent =
+        document.getElementById("mileage").textContent =
             vehicle.mileage
-                ? Number(
-                    vehicle.mileage
-                ).toLocaleString("en-US") + " mi"
+                ? Number(vehicle.mileage).toLocaleString("en-US") + " mi"
                 : "—";
 
-        document.getElementById(
-            "yourPrice"
-        ).textContent =
+        document.getElementById("yourPrice").textContent =
             money(vehicle.your_price);
 
-        document.getElementById(
-            "marketPrice"
-        ).textContent =
+        document.getElementById("marketPrice").textContent =
             money(vehicle.marketplace_price);
 
-        document.getElementById(
-            "condition"
-        ).textContent =
+        document.getElementById("condition").textContent =
             vehicle.condition || "Used";
 
-        document.getElementById(
-            "stock"
-        ).textContent =
+        document.getElementById("stock").textContent =
             vehicle.stock || "—";
 
-        document.getElementById(
-            "listingTitle"
-        ).value =
+        document.getElementById("listingTitle").value =
             vehicle.vehicle || "";
 
-        document.getElementById(
-            "listingPrice"
-        ).value =
+        document.getElementById("listingPrice").value =
             vehicle.marketplace_price || "";
 
         renderPublicationStatus();
 
+        // La descripción se sigue generando automáticamente.
         generateDescription();
 
-        document.getElementById(
-            "loading"
-        ).style.display = "none";
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("vehicleContent").style.display = "block";
 
-        document.getElementById(
-            "vehicleContent"
-        ).style.display = "block";
+        const returnedPhotos = Array.isArray(result.photos)
+            ? result.photos
+            : [];
 
-        const returnedPhotos =
-            Array.isArray(result.photos)
-                ? result.photos
-                : [];
-
-        photos = await verifyPhotos(
-            returnedPhotos
-        );
-
+        photos = await verifyPhotos(returnedPhotos);
         renderPhotos();
 
     } catch (error) {
-
-        document.getElementById(
-            "loading"
-        ).textContent =
+        document.getElementById("loading").textContent =
             "Error: " + error.message;
     }
 }
 
-/* GENERAR DESCRIPCIÓN */
+/* GENERACIÓN AUTOMÁTICA DE DESCRIPCIÓN */
 
 function generateDescription() {
-
     if (!vehicle) {
         return;
     }
 
-    const name =
-        vehicle.vehicle || "Used Vehicle";
+    const name = vehicle.vehicle || "Used Vehicle";
 
     const mileage = vehicle.mileage
-        ? Number(
-            vehicle.mileage
-        ).toLocaleString("en-US") + " miles"
+        ? Number(vehicle.mileage).toLocaleString("en-US") + " miles"
         : "";
 
     let description = name + "\n\n";
 
     if (mileage) {
-        description +=
-            "Mileage: " + mileage + "\n";
+        description += "Mileage: " + mileage + "\n";
     }
 
     description +=
@@ -1062,26 +871,12 @@ function generateDescription() {
         "Send me a message for more information, " +
         "financing options, or to schedule a test drive.";
 
-    document.getElementById(
-        "description"
-    ).value = description;
-}
-
-/* ABRIR FACEBOOK MARKETPLACE */
-
-function openMarketplace() {
-
-    window.open(
-        "https://www.facebook.com/marketplace/create/vehicle",
-        "_blank",
-        "noopener,noreferrer"
-    );
+    document.getElementById("description").value = description;
 }
 
 /* INICIAR */
 
 loadVehicle();
-
 </script>
 
 </body>
